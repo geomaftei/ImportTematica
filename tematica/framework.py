@@ -8,6 +8,8 @@ Erorile de business (BusinessRuleException) opresc procesarea fără retry; eror
 """
 from __future__ import annotations
 
+import contextlib
+import io
 import logging
 import shutil
 import traceback
@@ -142,11 +144,16 @@ class Framework:
         log.info("Ferestre Pentana deschise în momentul erorii:\n%s", ferestre)
 
         if self.app is not None:
+            # print_control_identifiers(filename=...) scrie în codificarea sistemului și cade la diacritice,
+            # așa că îi capturăm ieșirea și o scriem noi în UTF-8
+            buf = io.StringIO()
             try:
                 depth = int(self.cfg.get("debug.tree_depth", 8))
-                self.app.main.print_control_identifiers(depth=depth, filename=str(folder / "controale.txt"))
+                with contextlib.redirect_stdout(buf):
+                    self.app.main.print_control_identifiers(depth=depth)
             except Exception as e:  # noqa: BLE001
-                (folder / "controale.txt").write_text(f"Nu am putut lista controalele: {e}", encoding="utf-8")
+                buf.write(f"\nNu am putut lista controalele complet: {e}")
+            (folder / "controale.txt").write_text(buf.getvalue(), encoding="utf-8")
 
         for handler in logging.getLogger().handlers:
             cale_log = getattr(handler, "baseFilename", None)

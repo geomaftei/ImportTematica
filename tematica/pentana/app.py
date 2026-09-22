@@ -143,10 +143,25 @@ class PentanaApp:
         """<wnd ctrlname='DropDownComponentWindow' /> - fereastra pop-up folosită pentru toate listele."""
         return self.window("DropDownComponentWindow")
 
-    def popup_menu(self, owner_auto_id: Optional[str] = None):
-        """<wnd aaname='DropDown' cls='WindowsForms10.Window.*' /><ctrl name='DropDown' role='popup menu' />."""
-        owner = self.window(owner_auto_id) if owner_auto_id else self._resolve(title="DropDown")
-        return owner.child_window(title="DropDown", control_type="Menu")
+    def popup_menu(self, owner_auto_id: Optional[str] = None, timeout: Optional[float] = None):
+        """<wnd aaname='DropDown' cls='WindowsForms10.Window.*' /><ctrl name='DropDown' role='popup menu' />.
+        Întoarce fereastra meniului; elementele (MenuItem) se caută direct în ea, indiferent dacă meniul propriu-zis
+        e fereastra însăși sau un copil al ei."""
+        if owner_auto_id:
+            return self.window(owner_auto_id, timeout=timeout)
+        return self._resolve(timeout, title="DropDown")
+
+    def menu_open(self, owner_auto_id: Optional[str] = None, timeout: float = 3) -> bool:
+        try:
+            self.popup_menu(owner_auto_id, timeout=timeout)
+            return True
+        except ApplicationException:
+            return False
+
+    def menu_item(self, name: str, owner_auto_id: Optional[str] = None, timeout: Optional[float] = None):
+        """Un element de meniu după nume (regex tolerant la diacritice și la wildcard-ul '*' din UiPath)."""
+        return self.popup_menu(owner_auto_id, timeout=timeout).child_window(title_re=_wild(name),
+                                                                              control_type="MenuItem")
 
     @staticmethod
     def path(parent, *steps: Step):
@@ -258,13 +273,13 @@ class PentanaApp:
                         keyboard_fallback: Iterable[str] = ()) -> None:
         """Alege un element din meniul pop-up 'DropDown' după nume; dacă nu îl găsește, folosește tastele robotului."""
         try:
-            item = self.popup_menu(owner_auto_id).child_window(title_re=_wild(name), control_type="MenuItem")
-            self.click(item)
+            self.click(self.menu_item(name, owner_auto_id))
             return
         except ApplicationException:
+            log.warning("Elementul de meniu '%s' nu a fost găsit. Ferestre deschise:\n%s", name, self.dump_windows())
             if not keyboard_fallback:
                 raise
-            log.debug("Meniul '%s' nu a fost găsit după nume; trimit %s", name, list(keyboard_fallback))
+            log.debug("Trimit tastele de rezervă %s", list(keyboard_fallback))
             for k in keyboard_fallback:
                 keyboard.send_keys(k)
                 self.pause(0.5)
@@ -331,9 +346,14 @@ def describe(spec) -> str:
         return str(spec)
 
 
+_DIACRITICE = str.maketrans({c: "." for c in "ăâîșşțţĂÂÎȘŞȚŢ"})
+
+
 def _wild(name: str) -> str:
-    """'Risc aferent ... si *' (wildcard UiPath) -> regex."""
-    return "^" + ".*".join(re.escape(p) for p in name.split("*")) + ("" if name.endswith("*") else "$")
+    """'Risc aferent ... si *' (wildcard UiPath) -> regex; diacriticele devin '.', ca să se potrivească
+    și 'Adăugare' și 'Adaugare' (traducerile aplicației diferă între versiuni)."""
+    parts = [re.escape(p).translate(_DIACRITICE) for p in name.split("*")]
+    return "^" + ".*".join(parts) + ("" if name.endswith("*") else "$")
 
 
 def _match(pattern: str, text: str) -> bool:

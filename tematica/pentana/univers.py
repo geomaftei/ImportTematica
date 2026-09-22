@@ -16,6 +16,7 @@ import time
 from pywinauto import keyboard
 
 from ..config import Config
+from ..exceptions import ApplicationException
 from ..matrice import Matrice
 from .app import PentanaApp, describe
 
@@ -120,13 +121,45 @@ class IntroducereProceseInUnivers:
             # procesul se adaugă la același nivel cu selecția: selectăm întâi un nod de pe primul nivel al
             # arborelui (implicit "Archived"), ca noul proces să ajungă pe primul nivel, nu în interiorul lui
             self._selecteaza_nod_prim_nivel()
-            self.app.click(self.btn_new)
-            self.app.click_menu_item(MENIU_ACELASI_NIVEL, keyboard_fallback=("{TAB}", "{TAB}", "{ENTER}"))
+            self._deschide_meniul_add_item()
+            self.app.click_menu_item(MENIU_ACELASI_NIVEL)
         else:
             self.app.select_tree_item(self.tree, parinte)
-            self.app.click(self.btn_new)
-            self.app.click_menu_item(MENIU_SUB_OBIECT, keyboard_fallback=("{TAB}", "{ENTER}"))
+            self._deschide_meniul_add_item()
+            self.app.click_menu_item(MENIU_SUB_OBIECT)
         self.app.pause(2)
+
+    def _deschide_meniul_add_item(self) -> None:
+        """Deschide meniul butonului "+ Add item ▼" din săgeata neagră (partea de dropdown a split-button-ului).
+
+        Clicul pe partea cu text adaugă direct un sub-element, deci nu apăsăm acolo. Robotul UiPath trimitea Enter
+        pe buton, ceea ce în versiunea lui de aplicație deschidea meniul; aici încercăm ExpandCollapse, apoi
+        clicul pe marginea dreaptă a butonului, și verificăm de fiecare dată că meniul chiar s-a deschis.
+        """
+        btn = self.app.wait(self.btn_new)
+        ei = btn.element_info
+        copii = [(c.element_info.control_type, c.window_text()) for c in btn.children()]
+        log.info("btn_New: tip=%s nume=%r rect=%s copii=%s", ei.control_type, ei.name, btn.rectangle(), copii)
+
+        try:
+            btn.expand()  # pattern ExpandCollapse (SplitButton / DropDownButton)
+            if self.app.menu_open():
+                return
+        except Exception as exc:  # noqa: BLE001
+            log.debug("expand() pe btn_New nu e disponibil: %s", exc)
+
+        r = btn.rectangle()
+        btn.click_input(coords=(r.width() - 6, r.height() // 2))  # săgeata neagră de la marginea dreaptă
+        if self.app.menu_open():
+            return
+
+        for copil in btn.children():
+            if copil.element_info.control_type in ("Button", "SplitButton", "MenuItem"):
+                copil.click_input()
+                if self.app.menu_open():
+                    return
+        raise ApplicationException("Nu am reușit să deschid meniul butonului 'Add item' (săgeata de lângă buton). "
+                                   "Ferestre deschise:\n" + self.app.dump_windows())
 
         # "Scrierea Numelui": Ctrl+A pe numele implicit, apoi lipire din clipboard
         self.app.paste_into(self._camp_detalii("txt_Name"), nume, select_all=True)
