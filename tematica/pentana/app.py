@@ -24,7 +24,7 @@ from typing import Iterable, Optional, Tuple, Union
 
 import pyperclip
 from pywinauto import Application, Desktop, keyboard
-from pywinauto.findwindows import ElementNotFoundError
+from pywinauto.findwindows import ElementAmbiguousError, ElementNotFoundError
 from pywinauto.timings import TimeoutError as PwTimeoutError
 
 from ..config import Config
@@ -173,6 +173,9 @@ class PentanaApp:
             Desktop(backend="uia").window(process=self.app.process, **criteria),
         ]
         if criteria.get("auto_id") != self.main_id:
+            # ecranele și listele derulante sunt copii apropiați ai ferestrei principale: întâi cu adâncime
+            # limitată (rapid), apoi oriunde în fereastră (lent, scanează tot)
+            candidates.append(self.main.child_window(depth=3, **criteria))
             candidates.append(self.main.child_window(**criteria))
         # locul în care am găsit ultima dată fereastra se încearcă primul (economisește scanări)
         key = tuple(sorted(criteria.items()))
@@ -186,7 +189,8 @@ class PentanaApp:
                 if self.exists(candidates[i], timeout=0.5):
                     if self._unde_gasit.get(key) != i:
                         log.debug("Fereastra %s găsită ca %s", criteria,
-                                  ("fereastră a procesului", "fereastră pe desktop", "copil al ferestrei principale")[i])
+                                  ("fereastră a procesului", "fereastră pe desktop",
+                                   "copil apropiat al ferestrei principale", "descendent al ferestrei principale")[i])
                         self._unde_gasit[key] = i
                     return candidates[i]
             if time.monotonic() >= deadline:
@@ -244,6 +248,10 @@ class PentanaApp:
         except (PwTimeoutError, ElementNotFoundError) as exc:
             raise ApplicationException(
                 f"Nu am găsit elementul în {timeout or self.timeout}s: {describe(spec)}"
+            ) from exc
+        except ElementAmbiguousError as exc:
+            raise ApplicationException(
+                f"Selectorul se potrivește cu mai multe elemente (trebuie restrâns): {describe(spec)}"
             ) from exc
         finally:
             durata = time.monotonic() - start
@@ -372,6 +380,29 @@ class PentanaApp:
                 self.pause()
                 return item
         raise ApplicationException(f"Nu am găsit în arbore nodul '{name}'")
+
+    def select_tree_path(self, tree, cale: Iterable[str]):
+        """Selectează nodul de la capătul căii [proces, arie, sub-arie], coborând nivel cu nivel prin copiii
+        fiecărui nod (nu enumerăm tot arborele, care are sute de noduri)."""
+        nod = tree.wrapper_object() if hasattr(tree, "wrapper_object") else tree
+        for nume in cale:
+            try:
+                if nod.element_info.control_type == "TreeItem" and not nod.is_expanded():
+                    nod.expand()
+            except Exception:  # noqa: BLE001
+                pass
+            copii = [c for c in nod.children() if c.element_info.control_type == "TreeItem"]
+            urmator = next((c for c in copii if _match(nume, c.window_text())), None)
+            if urmator is None:
+                raise ApplicationException(
+                    f"Nu am găsit nodul '{nume}' sub '{nod.window_text() or 'rădăcină'}'; "
+                    f"copii: {[c.window_text() for c in copii[:12]]}"
+                )
+            nod = urmator
+        nod.click_input()
+        self.pause()
+        log.info("Selectat în arbore: %s", " > ".join(cale))
+        return nod
 
     def dropdown_select(self, name: Optional[str], tree_auto_id: str = "DataListTreeControl") -> bool:
         """În DropDownComponentWindow: alege elementul cu numele dat; None/negăsit -> 'Selectare niciun element'."""

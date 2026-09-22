@@ -9,7 +9,7 @@ pentana:
   # Credențialele din .env se folosesc doar dacă formularul de login rămâne afișat fără "Please wait...".
   login_delay_s: 90
   # Pauză după ce aplicația pare gata (meniul "Instrumente" activ), înainte de prima acțiune.
-  ready_delay_s: 2
+  ready_delay_s: 1
   wait_timeout_s: 15
   # Pauză scurtă între acțiunile din UI (aplicația WinForms are nevoie de timp să reacționeze).
   action_delay_s: 0.4
