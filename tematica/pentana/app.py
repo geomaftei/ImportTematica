@@ -48,22 +48,33 @@ class PentanaApp:
         self.delay: float = float(cfg.get("pentana.action_delay_s", 0.4))
         self.imagini = Imagini(cfg)
         self.app: Optional[Application] = None
+        self._unde_gasit: dict = {}
 
     # ------------------------------------------------------------------ ciclu de viață
     def start(self) -> "PentanaApp":
         """StartProcess -> Click Image 'Modulul de Live' -> Delay -> LoginPentana (dacă apare panoul de login)."""
         log.info("Pornire Pentana: %s", self.exe)
         self.app = Application(backend="uia").start(self.exe)
-        time.sleep(3)
-        # "Click pe Modulul de Live": cardul 'Live Configuration' de pe ecranul de start
-        try:
-            self.imagini.click("live_configuration", timeout=60)
-        except ApplicationException:
-            log.warning("Nu am găsit cardul 'Live Configuration'; presupun că aplicația a intrat direct în modul Live")
+        # "Click pe Modulul de Live": cardul 'Live Configuration' de pe ecranul de start - dacă apare;
+        # altfel mergem mai departe imediat ce fereastra principală există
+        deadline = time.monotonic() + 90
+        while time.monotonic() < deadline:
+            if self.exists(self.main, timeout=1):
+                break
+            if self.imagini.gaseste("live_configuration", timeout=1) is not None:
+                self.imagini.click("live_configuration", timeout=1)
+                log.info("Am ales modulul 'Live Configuration'")
         self.main.wait("exists visible", timeout=max(self.timeout, 60))
-        time.sleep(float(self.cfg.get("pentana.login_delay_s", 12)))  # "Delay logare in aplicatie"
-        if self._login_visible():
-            self.login()
+        # "Delay logare in aplicatie": așteptăm până se încarcă meniul din stânga sau apare panoul de login,
+        # cel mult login_delay_s
+        deadline = time.monotonic() + float(self.cfg.get("pentana.login_delay_s", 12))
+        while time.monotonic() < deadline:
+            if self._login_visible():
+                self.login()
+                break
+            if self.exists(self.main.child_window(auto_id="pnl_SectionMenu"), timeout=1):
+                break
+        log.info("Pentana este pornită")
         return self
 
     def attach(self) -> "PentanaApp":
@@ -75,7 +86,7 @@ class PentanaApp:
 
     def _login_visible(self) -> bool:
         try:
-            return self.path(self.main, "pnl_Main", "LoginSection", "pnl_Login").exists(timeout=2)
+            return self.main.child_window(auto_id="pnl_Login").exists(timeout=1)
         except Exception:
             return False
 
@@ -122,11 +133,21 @@ class PentanaApp:
         ]
         if criteria.get("auto_id") != self.main_id:
             candidates.append(self.main.child_window(**criteria))
+        # locul în care am găsit ultima dată fereastra se încearcă primul (economisește scanări)
+        key = tuple(sorted(criteria.items()))
+        order = list(range(len(candidates)))
+        if key in self._unde_gasit:
+            order.remove(self._unde_gasit[key])
+            order.insert(0, self._unde_gasit[key])
         deadline = time.monotonic() + (timeout or self.timeout)
         while True:
-            for spec in candidates:
-                if self.exists(spec, timeout=0.5):
-                    return spec
+            for i in order:
+                if self.exists(candidates[i], timeout=0.5):
+                    if self._unde_gasit.get(key) != i:
+                        log.debug("Fereastra %s găsită ca %s", criteria,
+                                  ("fereastră a procesului", "fereastră pe desktop", "copil al ferestrei principale")[i])
+                        self._unde_gasit[key] = i
+                    return candidates[i]
             if time.monotonic() >= deadline:
                 raise ApplicationException(
                     f"Nu am găsit fereastra {criteria} în {timeout or self.timeout}s. Ferestre deschise:\n"
@@ -176,12 +197,17 @@ class PentanaApp:
 
     # ------------------------------------------------------------------ acțiuni
     def wait(self, spec, timeout: Optional[float] = None):
+        start = time.monotonic()
         try:
             return spec.wait("exists visible enabled", timeout=timeout or self.timeout)
         except (PwTimeoutError, ElementNotFoundError) as exc:
             raise ApplicationException(
                 f"Nu am găsit elementul în {timeout or self.timeout}s: {describe(spec)}"
             ) from exc
+        finally:
+            durata = time.monotonic() - start
+            if durata > 2:
+                log.info("Căutarea a durat %.1fs: %s", durata, describe(spec))
 
     def dump_windows(self) -> str:
         """Ferestrele procesului Pentana (de pe desktop) și copiii direcți ai ferestrei principale - pentru log."""

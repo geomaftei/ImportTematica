@@ -1,4 +1,8 @@
 {
+  "add_item_buton": {
+    "descriere": "Butonul '+ Add item ▼' din ecranul Proces/Aria/Sub Aria; meniul se deschide din săgeata de la marginea dreaptă",
+    "sursa": "decupat din captura de ecran din 22.09.2026 (scalare 100%), nu din robotul UiPath"
+  },
   "live_configuration": {
     "descriere": "Modulul 'Live Configuration' de la pornirea aplicației",
     "sursa": "IntroducereProceseInUnivers.xaml - \"Click pe Modulul de Live\""

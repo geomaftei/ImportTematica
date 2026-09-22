@@ -1,18 +1,24 @@
 """IntroducereProceseInUnivers.xaml - adaugă Procese / Arii / Sub-arii în Universul de procese.
 
-Ecranul: Instrumente (Alt+I) -> Configurare -> secțiunea "Procese" (ConfigurationScreen / RiskProcessSection).
-Pentru fiecare nod: btn_New -> meniul "Adăugare sub-obiect la selecție" / "Adăugare obiect la același nivel ca
-selecția", numele în txt_Name, tipul (Proces / Arie / Sub-arie) în lst_Type. La final: "Trimite modificari".
+Ecranul: Instrumente (Alt+I) -> Configurare -> secțiunea "Proces/Aria/Sub Aria" (ConfigurationScreen /
+RiskProcessSection). Pentru fiecare nod: săgeata butonului "+ Add item" -> meniul "Adăugare sub-obiect la selecție"
+/ "Adăugare obiect la același nivel ca selecția", tab-ul "Detalii", numele în txt_Name, tipul (Proces / Arie /
+Sub-arie) în lst_Type. La final: "Trimitere modificări".
 
 Robotul UiPath naviga în arbore numai cu tastele Up/Down și ținea contoare (Contor_Reasignare_Proces,
 ElementeDeScazutDinProcesClick) ca să revină la nivelul corect. Aici selectăm părintele după nume în tv_Universe
 înainte de fiecare adăugare, ceea ce dă același rezultat fără contoare.
+
+Toate controalele se caută cu o singură scanare pornind de la ecranul de configurare (auto_id-urile sunt unice
+acolo); lanțurile lungi de selectori din UiPath rescanau la fiecare nivel arborele cu sute de noduri.
 """
 from __future__ import annotations
 
 import logging
 import time
+from typing import Optional
 
+import pyautogui
 from pywinauto import keyboard
 
 from ..config import Config
@@ -42,40 +48,20 @@ class IntroducereProceseInUnivers:
     @property
     def config_screen(self):
         if self._config_screen is None:
-            self._config_screen = self.app.screen("ConfigurationScreen", timeout=30)
+            self._config_screen = self.app.window("ConfigurationScreen", timeout=30)
         return self._config_screen
 
-    @property
-    def section(self):
-        return self.app.path(self.config_screen, "pnl_Sections", "RiskProcessSection", ("tbl_Layout", 0))
+    def ctl(self, auto_id: str, **extra):
+        """Un control din ecranul de configurare, căutat direct după auto_id (o singură scanare)."""
+        return self.config_screen.child_window(auto_id=auto_id, **extra)
 
     @property
     def tree(self):
-        return self.app.path(self.section, "pnl_Left", "tv_Universe")
+        return self.ctl("tv_Universe")
 
     @property
     def btn_new(self):
-        return self.app.path(self.section, "pnl_Left", "tb_Left", "btn_New")
-
-    @property
-    def details(self):
-        return self.app.path(self.section, "pnl_Background", "pnl_Page", "c_Page", "pnl_Layout", "mp_Pages",
-                             "mpp_Details", "tbl_Layout")
-
-    def _camp_detalii(self, auto_id: str):
-        """Un câmp din tab-ul 'Detalii' (txt_Name, lst_Type). Panoul se poate deschide pe tab-ul 'Pictogramă',
-        caz în care 'Detalii' trebuie apăsat întâi; câmpul se caută apoi oriunde în secțiune."""
-        tab = self.section.child_window(title="Detalii", control_type="TabItem")
-        if self.app.exists(tab, timeout=2):
-            try:
-                if not tab.wrapper_object().is_selected():
-                    self.app.click(tab)
-            except Exception:  # noqa: BLE001 - controlul nu expune SelectionItem
-                self.app.click(tab)
-        camp = self.details.child_window(auto_id=auto_id)
-        if self.app.exists(camp, timeout=3):
-            return camp
-        return self.section.child_window(auto_id=auto_id)
+        return self.ctl("btn_New")
 
     # --- flux ----------------------------------------------------------
     def ruleaza(self) -> None:
@@ -91,31 +77,30 @@ class IntroducereProceseInUnivers:
         self.trimite_modificari()
 
     def deschide_ecranul_procese(self) -> None:
-        """Alt+I, C, C, Enter -> Configurare; apoi butonul de secțiune -> 'Procese'."""
+        """Alt+I, C, C, Enter -> Configurare; apoi butonul de secțiune -> 'Proces/Aria/Sub Aria'."""
         main = self.app.wait(self.app.main)
         main.set_focus()
-        self.app.pause(2)
-        # meniul "Instrumente" (Alt+I) -> "Configurare" (c, c) -> Enter; cu pauze, ca meniul să apuce să se deschidă
+        self.app.pause()
+        # meniul "Instrumente" (Alt+I) -> "Configurare" (c, c) -> Enter
         for key in ("%i", "c", "c", "{ENTER}"):
             keyboard.send_keys(key)
-            self.app.pause(2)
-        time.sleep(3)  # "Delay 3 sec" din workflow
+            time.sleep(0.5)
         self._config_screen = None
         log.info("Ecranul de configurare găsit: %s", describe(self.config_screen))
-        self.app.click(self.app.path(self.config_screen, "tb_Store", "btn_Section"))
+        self.app.click(self.ctl("btn_Section"))  # "Selectați secțiunea de configurare..."
         self.app.click(self._buton_sectiune_procese())
-        self.app.wait(self.tree)
+        self.app.wait(self.tree, timeout=30)
 
     def _buton_sectiune_procese(self):
         """Elementul 'Proces/Aria/Sub Aria' din meniul de secțiuni (btn_RiskProcesses), cu rezervă după text."""
         dd = self.app.dropdown()
-        btn = self.app.path(dd, "pnl_Content", "ConfigurationMenu", "tbl_Layout", "btn_RiskProcesses")
+        btn = dd.child_window(auto_id="btn_RiskProcesses")
         if self.app.exists(btn, timeout=3):
             return btn
         log.info("btn_RiskProcesses negăsit după auto_id; caut după textul 'Proces/Aria/Sub Aria'")
         return dd.child_window(title_re=r"^Proces\s*/\s*Aria\s*/\s*Sub\s*Aria.*")
 
-    def adauga_nod(self, nume: str, tip: str, parinte: str | None) -> None:
+    def adauga_nod(self, nume: str, tip: str, parinte: Optional[str]) -> None:
         log.info("Adaugare %s: %s", tip, nume)
         if parinte is None:
             # procesul se adaugă la același nivel cu selecția: selectăm întâi un nod de pe primul nivel al
@@ -129,38 +114,6 @@ class IntroducereProceseInUnivers:
             self.app.click_menu_item(MENIU_SUB_OBIECT)
         self.app.pause(2)
 
-    def _deschide_meniul_add_item(self) -> None:
-        """Deschide meniul butonului "+ Add item ▼" din săgeata neagră (partea de dropdown a split-button-ului).
-
-        Clicul pe partea cu text adaugă direct un sub-element, deci nu apăsăm acolo. Robotul UiPath trimitea Enter
-        pe buton, ceea ce în versiunea lui de aplicație deschidea meniul; aici încercăm ExpandCollapse, apoi
-        clicul pe marginea dreaptă a butonului, și verificăm de fiecare dată că meniul chiar s-a deschis.
-        """
-        btn = self.app.wait(self.btn_new)
-        ei = btn.element_info
-        copii = [(c.element_info.control_type, c.window_text()) for c in btn.children()]
-        log.info("btn_New: tip=%s nume=%r rect=%s copii=%s", ei.control_type, ei.name, btn.rectangle(), copii)
-
-        try:
-            btn.expand()  # pattern ExpandCollapse (SplitButton / DropDownButton)
-            if self.app.menu_open():
-                return
-        except Exception as exc:  # noqa: BLE001
-            log.debug("expand() pe btn_New nu e disponibil: %s", exc)
-
-        r = btn.rectangle()
-        btn.click_input(coords=(r.width() - 6, r.height() // 2))  # săgeata neagră de la marginea dreaptă
-        if self.app.menu_open():
-            return
-
-        for copil in btn.children():
-            if copil.element_info.control_type in ("Button", "SplitButton", "MenuItem"):
-                copil.click_input()
-                if self.app.menu_open():
-                    return
-        raise ApplicationException("Nu am reușit să deschid meniul butonului 'Add item' (săgeata de lângă buton). "
-                                   "Ferestre deschise:\n" + self.app.dump_windows())
-
         # "Scrierea Numelui": Ctrl+A pe numele implicit, apoi lipire din clipboard
         self.app.paste_into(self._camp_detalii("txt_Name"), nume, select_all=True)
 
@@ -173,7 +126,7 @@ class IntroducereProceseInUnivers:
         top = [it for it in tree.children() if it.element_info.control_type == "TreeItem"]
         if not top:
             top = tree.descendants(control_type="TreeItem")[:1]
-        log.info("Noduri pe primul nivel în tv_Universe: %s", [t.window_text() for t in top[:15]])
+        log.info("Noduri pe primul nivel în tv_Universe: %s", [t.window_text() for t in top[:8]])
         dorit = str(self.cfg.get("pentana.process_sibling_node", "Archived") or "")
         ales = next((t for t in top if t.window_text().strip().lower() == dorit.lower()), None) or (top[0] if top else None)
         if ales is None:
@@ -188,9 +141,66 @@ class IntroducereProceseInUnivers:
         self.app.pause()
         log.info("Selectat nodul '%s' pentru adăugare la același nivel", ales.window_text())
 
+    def _deschide_meniul_add_item(self) -> None:
+        """Deschide meniul butonului "+ Add item ▼" din săgeata neagră (partea de dropdown a split-button-ului).
+
+        Clicul pe partea cu text adaugă direct un sub-element, deci nu apăsăm acolo. Întâi căutăm butonul ca imagine
+        (Data/Images/add_item_buton.png, decupat din aplicație) în ecranul de configurare și dăm click pe marginea
+        lui dreaptă; apoi, ca rezervă, ExpandCollapse și clicul pe marginea dreaptă a dreptunghiului raportat de UIA.
+        După fiecare încercare verificăm că meniul chiar s-a deschis.
+        """
+        region = self.app.region_of(self.config_screen)
+        found = self.app.imagini.gaseste("add_item_buton", region=region, timeout=3)
+        if found is not None:
+            _, box = found
+            x, y = int(box.left + box.width - 9), int(box.top + box.height / 2)
+            log.info("Click pe săgeata butonului 'Add item' la (%d, %d) [imagine la %s]", x, y, box)
+            pyautogui.click(x, y)
+            self.app.pause(2)
+            if self.app.menu_open():
+                return
+            log.warning("Meniul nu s-a deschis după clicul pe săgeată (imagine)")
+
+        btn = self.app.wait(self.btn_new)
+        ei = btn.element_info
+        copii = [(c.element_info.control_type, c.window_text()) for c in btn.children()]
+        log.info("btn_New: tip=%s nume=%r rect=%s copii=%s", ei.control_type, ei.name, btn.rectangle(), copii)
+        try:
+            btn.expand()  # pattern ExpandCollapse (SplitButton / DropDownButton)
+            self.app.pause(2)
+            if self.app.menu_open():
+                return
+        except Exception as exc:  # noqa: BLE001
+            log.debug("expand() pe btn_New nu e disponibil: %s", exc)
+
+        r = btn.rectangle()
+        x, y = r.right - 6, (r.top + r.bottom) // 2
+        log.info("Click pe marginea dreaptă a btn_New la (%d, %d)", x, y)
+        pyautogui.click(x, y)
+        self.app.pause(2)
+        if self.app.menu_open():
+            return
+        raise ApplicationException("Nu am reușit să deschid meniul butonului 'Add item' (săgeata de lângă buton). "
+                                   "Ferestre deschise:\n" + self.app.dump_windows())
+
+    def _camp_detalii(self, auto_id: str):
+        """Un câmp din tab-ul 'Detalii' (txt_Name, lst_Type). Panoul se poate deschide pe tab-ul 'Pictogramă',
+        caz în care 'Detalii' trebuie apăsat întâi."""
+        tab = self.ctl_title("Detalii", "TabItem")
+        if self.app.exists(tab, timeout=2):
+            try:
+                if not tab.wrapper_object().is_selected():
+                    self.app.click(tab)
+            except Exception:  # noqa: BLE001 - controlul nu expune SelectionItem
+                self.app.click(tab)
+        return self.ctl(auto_id)
+
+    def ctl_title(self, title: str, control_type: str):
+        return self.config_screen.child_window(title=title, control_type=control_type)
+
     def trimite_modificari(self) -> None:
         """"Click 'Trimite modificari'" (btn_Submit); robotul avea și varianta cu imagine, păstrată ca rezervă."""
-        btn = self.app.path(self.config_screen, "tb_Store", "btn_Submit")
+        btn = self.ctl("btn_Submit")
         if self.app.exists(btn, timeout=3):
             self.app.click(btn)
         else:
