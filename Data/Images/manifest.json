@@ -1,0 +1,70 @@
+{
+  "live_configuration": {
+    "descriere": "Modulul 'Live Configuration' de la pornirea aplicației",
+    "sursa": "IntroducereProceseInUnivers.xaml - \"Click pe Modulul de Live\""
+  },
+  "trimite_modificari": {
+    "descriere": "Butonul 'Trimitere modificări' (ConfigurationScreen)",
+    "sursa": "IntroducereProceseInUnivers.xaml - \"Click Image 'Trimite modificari'\""
+  },
+  "tab_tip_risc": {
+    "descriere": "Tab-ul 'Tip Risc' din RiskTemplateEditor",
+    "sursa": "IntroducereRiscuri.xaml - \"Click Image 'Editor- Tip Risc'\""
+  },
+  "camp_none": {
+    "descriere": "Câmp derulant '< None >' (Tip Risc / Frecventa Control / Tehnici de testare)",
+    "sursa": "IntroducereRiscuri.xaml - \"Click Image 'Editor'\""
+  },
+  "selectare_niciun_element": {
+    "descriere": "'Selectare niciun element' din lista derulantă (varianta cu X roșu)",
+    "sursa": "IntroducereRiscuri.xaml - \"Click Image 'Selectare niciun element.'\""
+  },
+  "ok": {
+    "descriere": "Butonul OK din editoarele Risc/Control/Test",
+    "sursa": "IntroducereRiscuri.xaml - \"Click Image 'pentanamk.exe Editor'\""
+  },
+  "adaugare_control": {
+    "descriere": "Butonul 'Adăugare control' din matricea risc/control",
+    "sursa": "IntroducereRiscuri.xaml - \"Click Image 'Adaugare Control'\""
+  },
+  "camp_fara": {
+    "descriere": "Câmpul derulant '< Fără >' (Tip Control)",
+    "sursa": "IntroducereRiscuri.xaml - \"Click Image 'Fara control'\""
+  },
+  "liste_raspunsuri": {
+    "descriere": "Butonul 'Liste răspunsuri' din editoare",
+    "sursa": "IntroducereRiscuri.xaml - \"Click Image 'Liste raspunsuri'\""
+  },
+  "tab_detalii_control": {
+    "descriere": "Tab-ul 'Detalii Control' din ControlTemplateEditor",
+    "sursa": "IntroducereRiscuri.xaml - \"Click Image 'Detalii Control'\""
+  },
+  "filtre_risc_control_activ": {
+    "descriere": "Butonul 'Filtre risc/control' (evidențiat)",
+    "sursa": "IntroducereRiscuri.xaml - \"Click Image 'Filtre risc/control'\""
+  },
+  "filtre_risc_control": {
+    "descriere": "Butonul 'Filtre risc/control'",
+    "sursa": "IntroducereRiscuri.xaml - \"Click Image 'Filtre risc/control'\""
+  },
+  "aplicare_filtre": {
+    "descriere": "Butonul 'Aplicare filtre' din fereastra de filtre",
+    "sursa": "IntroducereRiscuri.xaml - \"Click Image 'Aplicare filtre'\""
+  },
+  "creare_legatura_risc_control": {
+    "descriere": "Elementul de meniu 'Creare legătură de risc/control pentru selecție'",
+    "sursa": "IntroducereRiscuri.xaml - \"Click 'Creare legatura de risc/control'\""
+  },
+  "tab_tehnici_de_testare": {
+    "descriere": "Tab-ul 'Tehnici De Testare' din TestTemplateEditor",
+    "sursa": "IntroducereRiscuri.xaml - \"Click Image 'pentanamk.exe Editor'\""
+  },
+  "editare_teste_pentru_controlul_selectat": {
+    "descriere": "Butonul 'Editare teste pentru controlul selectat'",
+    "sursa": "IntroducereRiscuri.xaml - \"Click Image 'Editare teste pentru controlul selectat'\""
+  },
+  "selectare_niciun_element_2": {
+    "descriere": "'Selectare niciun element' (varianta cu pătrat punctat)",
+    "sursa": "IntroducereRiscuri.xaml - \"Click Image 'Selectare niciun element.'\""
+  }
+}

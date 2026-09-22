@@ -1,0 +1,44 @@
+# Configurația procesului "Introducere Tematica in Pentana".
+# Înlocuiește Data/Config.xlsx (Settings/Constants/Assets) din proiectul UiPath.
+
+pentana:
+  exe: 'C:\Program Files (x86)\Ideagen\Pentana Audit MK12.0\pentanamk.exe'
+  main_window_auto_id: MKInsightMainUI
+  # Robotul UiPath aștepta 12 secunde după pornire ca aplicația să se autentifice singură.
+  login_delay_s: 12
+  wait_timeout_s: 15
+  # Pauză scurtă între acțiunile din UI (aplicația WinForms are nevoie de timp să reacționeze).
+  action_delay_s: 0.4
+  # Entitatea aleasă la "Selectati legaturi" când se creează șablonul.
+  entity_link: Banca Transilvania - Procese
+  template_name: Sablon Tematica 2
+  audit_type: Asigurare
+  # În UiPath, înainte de numele fiecărui proces se tasta "1" (activitatea "Adauga '1' inaintea numelui de Proces").
+  # Lasă gol dacă nu vrei prefixul.
+  process_name_prefix: "1"
+
+images:
+  # Șabloanele de imagine extrase din activitățile "Click Image" ale robotului (Data/Images, vezi manifest.json).
+  dir: Data/Images
+  # Accuracy="0.8" în UiPath -> confidence la potrivirea imaginii pe ecran.
+  confidence: 0.8
+  # Cât se așteaptă apariția unei imagini (robotul: TimeoutMS 6000 la filtre, implicit 30s).
+  timeout_s: 10
+
+paths:
+  # Matricea se citește din folderul de proiect.
+  input_file: MatriceDeIntrodus.xlsx
+  sheet: Sheet1
+  screenshots_dir: Data/Exceptions_Screenshots
+  log_dir: logs
+
+framework:
+  business_process_name: Introducere tematica in Aplicatia Audit
+  # Câte reîncercări la eroare de sistem (0 = ca în UiPath, fără retry).
+  max_retries: 0
+
+credentials:
+  # Asset-ul Orchestrator "AuditIntroducereTematica" -> variabilele de mediu PENTANA_USER / PENTANA_PASSWORD
+  # (sau fișier .env, sau Windows Credential Manager prin keyring). Folosite doar dacă apare ecranul de login.
+  pentana_env_prefix: PENTANA
+  keyring_service: IntroducereTematica
