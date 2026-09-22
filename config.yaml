@@ -2,7 +2,7 @@
 # Înlocuiește Data/Config.xlsx (Settings/Constants/Assets) din proiectul UiPath.
 
 pentana:
-  exe: 'C:\Program Files (x86)\Ideagen\Pentana Audit MK12.0\pentanamk.exe'
+  exe: 'C:\Program Files (x86)\Ideagen\Ideagen Internal Audit MK\PentanaMK.exe'
   main_window_auto_id: MKInsightMainUI
   # Robotul UiPath aștepta 12 secunde după pornire ca aplicația să se autentifice singură.
   login_delay_s: 12
