@@ -74,6 +74,9 @@ class PentanaApp:
                 break
             if self.exists(self.main.child_window(auto_id="pnl_SectionMenu"), timeout=1):
                 break
+        # bara de meniu se încarcă ultima: așteptăm elementul "Instrumente"
+        self.wait(self.main.child_window(title_re=r"^Instrumente.*", control_type="MenuItem"), timeout=60)
+        time.sleep(float(self.cfg.get("pentana.ready_delay_s", 2)))
         log.info("Pentana este pornită")
         return self
 

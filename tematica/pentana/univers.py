@@ -79,10 +79,15 @@ class IntroducereProceseInUnivers:
     def deschide_ecranul_procese(self) -> None:
         """Alt+I, C, C, Enter -> Configurare; apoi butonul de secțiune -> 'Proces/Aria/Sub Aria'."""
         main = self.app.wait(self.app.main)
+        # așteptăm ca bara de meniu să fie gata: elementul "Instrumente" să existe și să fie activ
+        self.app.wait(main.child_window(title_re=r"^Instrumente.*", control_type="MenuItem"), timeout=60)
+        time.sleep(float(self.cfg.get("pentana.ready_delay_s", 2)))
         main.set_focus()
         self.app.pause()
         # meniul "Instrumente" (Alt+I) -> "Configurare" (c, c) -> Enter
-        for key in ("%i", "c", "c", "{ENTER}"):
+        keyboard.send_keys("%i")
+        time.sleep(1)
+        for key in ("c", "c", "{ENTER}"):
             keyboard.send_keys(key)
             time.sleep(0.5)
         self._config_screen = None
