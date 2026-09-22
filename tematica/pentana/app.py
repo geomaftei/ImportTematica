@@ -143,7 +143,38 @@ class PentanaApp:
         try:
             return spec.wait("exists visible enabled", timeout=timeout or self.timeout)
         except (PwTimeoutError, ElementNotFoundError) as exc:
-            raise ApplicationException(f"Nu am găsit elementul în {timeout or self.timeout}s: {spec}") from exc
+            raise ApplicationException(
+                f"Nu am găsit elementul în {timeout or self.timeout}s: {describe(spec)}"
+            ) from exc
+
+    def screen(self, auto_id: str, timeout: Optional[float] = None):
+        """Un ecran al aplicației (ex. ConfigurationScreen): îl caută ca fereastră de nivel superior a procesului
+        și, dacă nu există acolo, ca fereastră-copil a ferestrei principale."""
+        deadline = time.monotonic() + (timeout or self.timeout)
+        candidates = (self.window(auto_id), self.main.child_window(auto_id=auto_id))
+        while True:
+            for spec in candidates:
+                if self.exists(spec, timeout=1):
+                    return spec
+            if time.monotonic() >= deadline:
+                raise ApplicationException(
+                    f"Nu am găsit ecranul '{auto_id}' în {timeout or self.timeout}s. Ferestre deschise:\n"
+                    + self.dump_windows()
+                )
+
+    def dump_windows(self) -> str:
+        """Lista ferestrelor de nivel superior ale procesului Pentana - pentru diagnosticare în log."""
+        if self.app is None:
+            return "(aplicația nu este pornită)"
+        lines = []
+        try:
+            for w in self.app.windows():
+                ei = w.element_info
+                lines.append(f"  auto_id={ei.automation_id!r} title={ei.name!r} class={ei.class_name!r} "
+                             f"visible={ei.visible} rect={ei.rectangle}")
+        except Exception as exc:  # noqa: BLE001
+            lines.append(f"  (eroare la listare: {exc})")
+        return "\n".join(lines) or "  (nicio fereastră)"
 
     def pause(self, factor: float = 1.0) -> None:
         time.sleep(self.delay * factor)
@@ -271,6 +302,19 @@ class PentanaApp:
             # controlul nu expune Toggle; robotul apăsa o tastă pe element (SpecialKey) - folosim SPACE
             keyboard.send_keys("{SPACE}")
         self.pause()
+
+
+def describe(spec) -> str:
+    """Lanțul de criterii al unui WindowSpecification, lizibil în log (ca un selector UiPath)."""
+    try:
+        parts = []
+        for crit in spec.criteria:
+            keep = {k: v for k, v in crit.items()
+                    if k in ("auto_id", "title", "title_re", "control_type", "found_index", "class_name")}
+            parts.append(" ".join(f"{k}={v!r}" for k, v in keep.items()) or str(crit))
+        return " > ".join(parts)
+    except Exception:  # noqa: BLE001
+        return str(spec)
 
 
 def _wild(name: str) -> str:

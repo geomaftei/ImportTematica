@@ -25,10 +25,12 @@ class StergereIndexProcese:
     def ruleaza(self) -> None:
         app = self.app
         for proces in self.procese:
-            app.hotkey(app.main, "%i")
-            keyboard.send_keys("cc{ENTER}")
+            app.wait(app.main).set_focus()
+            for key in ("%i", "c", "c", "{ENTER}"):
+                keyboard.send_keys(key)
+                app.pause(2)
             time.sleep(3)
-            config_screen = app.window("ConfigurationScreen")
+            config_screen = app.screen("ConfigurationScreen", timeout=30)
             app.click(app.path(config_screen, "tb_Store", "btn_Section"))
             app.click(app.path(app.dropdown(), "pnl_Content", "ConfigurationMenu", "tbl_Layout", "btn_RiskProcesses"))
 

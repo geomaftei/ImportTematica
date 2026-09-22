@@ -17,7 +17,7 @@ from pywinauto import keyboard
 
 from ..config import Config
 from ..matrice import Matrice
-from .app import PentanaApp
+from .app import PentanaApp, describe
 
 log = logging.getLogger("tematica.pentana.univers")
 
@@ -35,11 +35,14 @@ class IntroducereProceseInUnivers:
         self.cfg = cfg
         self.matrice = matrice
         self.prefix = str(cfg.get("pentana.process_name_prefix", "") or "")
+        self._config_screen = None
 
     # --- selectori -----------------------------------------------------
     @property
     def config_screen(self):
-        return self.app.window("ConfigurationScreen")
+        if self._config_screen is None:
+            self._config_screen = self.app.screen("ConfigurationScreen", timeout=30)
+        return self._config_screen
 
     @property
     def section(self):
@@ -73,10 +76,16 @@ class IntroducereProceseInUnivers:
 
     def deschide_ecranul_procese(self) -> None:
         """Alt+I, C, C, Enter -> Configurare; apoi butonul de secțiune -> 'Procese'."""
-        main = self.app.main
-        self.app.hotkey(main, "%i")
-        keyboard.send_keys("cc{ENTER}")
+        main = self.app.wait(self.app.main)
+        main.set_focus()
+        self.app.pause(2)
+        # meniul "Instrumente" (Alt+I) -> "Configurare" (c, c) -> Enter; cu pauze, ca meniul să apuce să se deschidă
+        for key in ("%i", "c", "c", "{ENTER}"):
+            keyboard.send_keys(key)
+            self.app.pause(2)
         time.sleep(3)  # "Delay 3 sec" din workflow
+        self._config_screen = None
+        log.info("Ecranul de configurare găsit: %s", describe(self.config_screen))
         self.app.click(self.app.path(self.config_screen, "tb_Store", "btn_Section"))
         self.app.click(self.app.path(self.app.dropdown(), "pnl_Content", "ConfigurationMenu", "tbl_Layout",
                                      "btn_RiskProcesses"))

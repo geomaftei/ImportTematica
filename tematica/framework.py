@@ -101,6 +101,8 @@ class Framework:
                 break
             except Exception as exc:  # noqa: BLE001 - System Exception
                 log.exception("System exception: %s", exc)
+                if self.app is not None:
+                    log.info("Ferestre Pentana deschise în momentul erorii:\n%s", self.app.dump_windows())
                 self._captura_ecran()
                 self._inchide_aplicatiile()
                 if incercare < max_retries:
