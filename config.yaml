@@ -16,6 +16,14 @@ pentana:
   # În UiPath, înainte de numele fiecărui proces se tasta "1" (activitatea "Adauga '1' inaintea numelui de Proces").
   # Lasă gol dacă nu vrei prefixul.
   process_name_prefix: "1"
+  # Nodul de pe primul nivel al arborelui tv_Universe care se selectează înainte de a adăuga un proces
+  # ("Adăugare obiect la același nivel ca selecția" -> procesul nou ajunge pe primul nivel, lângă acest nod).
+  process_sibling_node: Archived
+
+debug:
+  # La fiecare eroare de sistem se creează Data/Exceptions_Screenshots/ExceptionReport_<data>.zip cu captura de
+  # ecran, raportul erorii, arborele de controale al ferestrei principale (până la adâncimea de mai jos) și logul.
+  tree_depth: 8
 
 images:
   # Șabloanele de imagine extrase din activitățile "Click Image" ale robotului (Data/Images, vezi manifest.json).

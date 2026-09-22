@@ -61,6 +61,21 @@ class IntroducereProceseInUnivers:
         return self.app.path(self.section, "pnl_Background", "pnl_Page", "c_Page", "pnl_Layout", "mp_Pages",
                              "mpp_Details", "tbl_Layout")
 
+    def _camp_detalii(self, auto_id: str):
+        """Un câmp din tab-ul 'Detalii' (txt_Name, lst_Type). Panoul se poate deschide pe tab-ul 'Pictogramă',
+        caz în care 'Detalii' trebuie apăsat întâi; câmpul se caută apoi oriunde în secțiune."""
+        tab = self.section.child_window(title="Detalii", control_type="TabItem")
+        if self.app.exists(tab, timeout=2):
+            try:
+                if not tab.wrapper_object().is_selected():
+                    self.app.click(tab)
+            except Exception:  # noqa: BLE001 - controlul nu expune SelectionItem
+                self.app.click(tab)
+        camp = self.details.child_window(auto_id=auto_id)
+        if self.app.exists(camp, timeout=3):
+            return camp
+        return self.section.child_window(auto_id=auto_id)
+
     # --- flux ----------------------------------------------------------
     def ruleaza(self) -> None:
         log.info("WorkFlow-ul Introducere Procese in Universul de Procese a pornit")
@@ -102,20 +117,43 @@ class IntroducereProceseInUnivers:
     def adauga_nod(self, nume: str, tip: str, parinte: str | None) -> None:
         log.info("Adaugare %s: %s", tip, nume)
         if parinte is None:
-            # procesul se adaugă la același nivel cu selecția curentă (ca în robot)
+            # procesul se adaugă la același nivel cu selecția: selectăm întâi un nod de pe primul nivel al
+            # arborelui (implicit "Archived"), ca noul proces să ajungă pe primul nivel, nu în interiorul lui
+            self._selecteaza_nod_prim_nivel()
             self.app.click(self.btn_new)
             self.app.click_menu_item(MENIU_ACELASI_NIVEL, keyboard_fallback=("{TAB}", "{TAB}", "{ENTER}"))
         else:
             self.app.select_tree_item(self.tree, parinte)
             self.app.click(self.btn_new)
             self.app.click_menu_item(MENIU_SUB_OBIECT, keyboard_fallback=("{TAB}", "{ENTER}"))
+        self.app.pause(2)
 
         # "Scrierea Numelui": Ctrl+A pe numele implicit, apoi lipire din clipboard
-        self.app.paste_into(self.details.child_window(auto_id="txt_Name"), nume, select_all=True)
+        self.app.paste_into(self._camp_detalii("txt_Name"), nume, select_all=True)
 
         # "Selectarea tipului": Alt+Down pe lst_Type deschide lista MultiLevelListTreeControl
-        self.app.hotkey(self.details.child_window(auto_id="lst_Type"), "%{DOWN}")
+        self.app.hotkey(self._camp_detalii("lst_Type"), "%{DOWN}")
         self.app.dropdown_select(tip, tree_auto_id="MultiLevelListTreeControl")
+
+    def _selecteaza_nod_prim_nivel(self) -> None:
+        tree = self.app.wait(self.tree)
+        top = [it for it in tree.children() if it.element_info.control_type == "TreeItem"]
+        if not top:
+            top = tree.descendants(control_type="TreeItem")[:1]
+        log.info("Noduri pe primul nivel în tv_Universe: %s", [t.window_text() for t in top[:15]])
+        dorit = str(self.cfg.get("pentana.process_sibling_node", "Archived") or "")
+        ales = next((t for t in top if t.window_text().strip().lower() == dorit.lower()), None) or (top[0] if top else None)
+        if ales is None:
+            log.warning("Arborele tv_Universe pare gol; adaug procesul la selecția curentă")
+            return
+        try:
+            if ales.is_expanded():
+                ales.collapse()  # "să dea pe săgeata de lângă": strângem nodul ca selecția să rămână pe el
+        except Exception:  # noqa: BLE001
+            pass
+        ales.click_input()
+        self.app.pause()
+        log.info("Selectat nodul '%s' pentru adăugare la același nivel", ales.window_text())
 
     def trimite_modificari(self) -> None:
         """"Click 'Trimite modificari'" (btn_Submit); robotul avea și varianta cu imagine, păstrată ca rezervă."""

@@ -9,6 +9,8 @@ Erorile de business (BusinessRuleException) opresc procesarea fără retry; eror
 from __future__ import annotations
 
 import logging
+import shutil
+import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Sequence
@@ -101,9 +103,7 @@ class Framework:
                 break
             except Exception as exc:  # noqa: BLE001 - System Exception
                 log.exception("System exception: %s", exc)
-                if self.app is not None:
-                    log.info("Ferestre Pentana deschise în momentul erorii:\n%s", self.app.dump_windows())
-                self._captura_ecran()
+                self._raport_eroare(exc)
                 self._inchide_aplicatiile()
                 if incercare < max_retries:
                     incercare += 1
@@ -115,17 +115,52 @@ class Framework:
         self._inchide_aplicatiile()
         return rezultat
 
-    def _captura_ecran(self) -> None:
+    def _raport_eroare(self, exc: BaseException) -> None:
+        """Pachet de diagnostic la eroare: captură de ecran, raport text (eroare, traceback, ferestre deschise),
+        arborele de controale al ferestrei principale și logul zilei, arhivate într-un zip."""
+        folder = self.cfg.path("paths.screenshots_dir") / f"ExceptionReport_{datetime.now():%Y%m%d_%H%M%S}"
+        folder.mkdir(parents=True, exist_ok=True)
+
         try:
             from PIL import ImageGrab
 
-            folder = self.cfg.path("paths.screenshots_dir")
-            folder.mkdir(parents=True, exist_ok=True)
-            cale = folder / f"ExceptionScreenshot_{datetime.now():%Y%m%d_%H%M%S}.png"
-            ImageGrab.grab().save(cale)
-            log.info("Captura de ecran salvata: %s", cale)
-        except Exception as exc:  # noqa: BLE001
-            log.warning("Failed to take screenshot: %s", exc)
+            ImageGrab.grab().save(folder / "captura.png")
+        except Exception as e:  # noqa: BLE001
+            log.warning("Failed to take screenshot: %s", e)
+
+        ferestre = self.app.dump_windows() if self.app is not None else "(aplicația nu este pornită)"
+        raport = [
+            f"Data: {datetime.now():%Y-%m-%d %H:%M:%S}",
+            f"Eroare: {type(exc).__name__}: {exc}",
+            "",
+            "Traceback:",
+            traceback.format_exc(),
+            "Ferestre Pentana deschise în momentul erorii:",
+            ferestre,
+        ]
+        (folder / "raport.txt").write_text("\n".join(raport), encoding="utf-8")
+        log.info("Ferestre Pentana deschise în momentul erorii:\n%s", ferestre)
+
+        if self.app is not None:
+            try:
+                depth = int(self.cfg.get("debug.tree_depth", 8))
+                self.app.main.print_control_identifiers(depth=depth, filename=str(folder / "controale.txt"))
+            except Exception as e:  # noqa: BLE001
+                (folder / "controale.txt").write_text(f"Nu am putut lista controalele: {e}", encoding="utf-8")
+
+        for handler in logging.getLogger().handlers:
+            cale_log = getattr(handler, "baseFilename", None)
+            if cale_log and Path(cale_log).exists():
+                handler.flush()
+                linii = Path(cale_log).read_text(encoding="utf-8", errors="replace").splitlines()[-400:]
+                (folder / "log.txt").write_text("\n".join(linii), encoding="utf-8")
+
+        try:
+            zip_path = shutil.make_archive(str(folder), "zip", root_dir=folder)
+            shutil.rmtree(folder, ignore_errors=True)
+            log.info("Pachet de diagnostic salvat: %s", zip_path)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Nu am putut arhiva pachetul de diagnostic (%s); fișierele sunt în %s", e, folder)
 
     def _inchide_aplicatiile(self) -> None:
         if self.dry_run or self.attach:

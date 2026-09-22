@@ -84,5 +84,7 @@ unei ferestre, ca UI Explorer):
 6. **Prefixul „1”** pus înaintea numelui fiecărui proces (activitatea „Adauga '1' inaintea numelui de Proces”) –
    este reprodus; scoate-l din `pentana.process_name_prefix` dacă nu este dorit.
 
-La eroare, logul (`logs/`) conține selectorul sau imaginea căutată, iar în `Data/Exceptions_Screenshots/` rămâne
-captura de ecran.
+La orice eroare de sistem se creează `Data/Exceptions_Screenshots/ExceptionReport_<data>.zip` cu tot ce trebuie
+pentru diagnosticare: `captura.png` (ecranul în momentul erorii), `raport.txt` (eroarea, selectorul căutat,
+traceback, ferestrele Pentana deschise), `controale.txt` (arborele de controale al ferestrei principale, ca în
+UI Explorer) și `log.txt` (ultimele linii din log). Trimite acest zip când ceva nu merge.
