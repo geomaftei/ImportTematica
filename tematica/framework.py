@@ -120,7 +120,15 @@ class Framework:
     def _raport_eroare(self, exc: BaseException) -> None:
         """Pachet de diagnostic la eroare: captură de ecran, raport text (eroare, traceback, ferestre deschise),
         arborele de controale al ferestrei principale și logul zilei, arhivate într-un zip."""
-        folder = self.cfg.path("paths.screenshots_dir") / f"ExceptionReport_{datetime.now():%Y%m%d_%H%M%S}"
+        baza = self.cfg.path("paths.screenshots_dir")
+        baza.mkdir(parents=True, exist_ok=True)
+        # se păstrează doar ultimul pachet: golim folderul înainte de a-l scrie pe cel nou
+        for vechi in baza.iterdir():
+            try:
+                shutil.rmtree(vechi) if vechi.is_dir() else vechi.unlink()
+            except OSError as e:
+                log.warning("Nu am putut șterge %s: %s", vechi, e)
+        folder = baza / f"ExceptionReport_{datetime.now():%Y%m%d_%H%M%S}"
         folder.mkdir(parents=True, exist_ok=True)
 
         try:

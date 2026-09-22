@@ -87,4 +87,5 @@ unei ferestre, ca UI Explorer):
 La orice eroare de sistem se creează `Data/Exceptions_Screenshots/ExceptionReport_<data>.zip` cu tot ce trebuie
 pentru diagnosticare: `captura.png` (ecranul în momentul erorii), `raport.txt` (eroarea, selectorul căutat,
 traceback, ferestrele Pentana deschise), `controale.txt` (arborele de controale al ferestrei principale, ca în
-UI Explorer) și `log.txt` (ultimele linii din log). Trimite acest zip când ceva nu merge.
+UI Explorer) și `log.txt` (ultimele linii din log). Folderul păstrează doar ultimul pachet. Trimite acest zip când
+ceva nu merge.

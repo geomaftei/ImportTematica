@@ -23,6 +23,7 @@ pentana:
 debug:
   # La fiecare eroare de sistem se creează Data/Exceptions_Screenshots/ExceptionReport_<data>.zip cu captura de
   # ecran, raportul erorii, arborele de controale al ferestrei principale (până la adâncimea de mai jos) și logul.
+  # Folderul se golește înainte: rămâne mereu doar ultimul pachet.
   tree_depth: 8
 
 images:
