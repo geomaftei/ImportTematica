@@ -69,11 +69,23 @@ class PentanaApp:
         # să apară meniul, iar dacă în schimb a rămas afișat formularul de login, îl completăm noi
         deadline = time.monotonic() + float(self.cfg.get("pentana.login_delay_s", 90))
         login_trimis = False
+        secunde_formular_static = 0  # de câte secunde consecutive e afișat formularul fără "Please wait"
         while time.monotonic() < deadline and not self._ready():
-            if not login_trimis and self._login_visible() and not self._login_in_progress():
-                log.info("Formularul de autentificare a rămas afișat; completez credențialele din .env")
-                self.login()
-                login_trimis = True
+            if self._login_visible() and not self._login_in_progress():
+                secunde_formular_static += 1
+            else:
+                secunde_formular_static = 0
+            # login manual doar dacă formularul a rămas afișat stabil (nu în tranziția de după auto-login)
+            # și doar dacă avem credențiale configurate; altfel așteptăm autentificarea automată
+            if not login_trimis and secunde_formular_static >= 8:
+                if self._are_credentiale():
+                    log.info("Formularul de autentificare a rămas afișat; completez credențialele din .env")
+                    self.login()
+                    login_trimis = True
+                else:
+                    log.info("Formularul de autentificare e afișat, dar nu am credențiale în .env; "
+                             "aștept autentificarea automată")
+                    secunde_formular_static = -30  # nu repeta mesajul la fiecare secundă
             time.sleep(1)
         # bara de meniu se încarcă ultima: așteptăm elementul "Instrumente" ("Tools" înainte de login)
         self.wait(self._menu_instrumente(), timeout=60)
@@ -88,6 +100,13 @@ class PentanaApp:
         """Aplicația e autentificată și încărcată: meniul din stânga există și formularul de login a dispărut."""
         return (self.exists(self.main.child_window(auto_id="pnl_SectionMenu"), timeout=1)
                 and not self._login_visible())
+
+    def _are_credentiale(self) -> bool:
+        try:
+            self.cfg.pentana_credential
+            return True
+        except RuntimeError:
+            return False
 
     def _login_in_progress(self) -> bool:
         """'Please wait while Ideagen Internal Audit logs in to your account...' (lbl_LoginWait) este afișat."""
