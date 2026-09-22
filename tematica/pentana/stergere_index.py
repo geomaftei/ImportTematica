@@ -32,7 +32,9 @@ class StergereIndexProcese:
             time.sleep(3)
             config_screen = app.screen("ConfigurationScreen", timeout=30)
             app.click(app.path(config_screen, "tb_Store", "btn_Section"))
-            app.click(app.path(app.dropdown(), "pnl_Content", "ConfigurationMenu", "tbl_Layout", "btn_RiskProcesses"))
+            dd = app.dropdown()
+            btn = app.path(dd, "pnl_Content", "ConfigurationMenu", "tbl_Layout", "btn_RiskProcesses")
+            app.click(btn if app.exists(btn, timeout=3) else dd.child_window(title_re=r"^Proces\s*/\s*Aria.*"))
 
             log.info("Schimbare nume Proces: %s", proces)
             section = app.path(config_screen, "pnl_Sections", "RiskProcessSection", ("tbl_Layout", 0))

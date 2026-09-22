@@ -87,9 +87,17 @@ class IntroducereProceseInUnivers:
         self._config_screen = None
         log.info("Ecranul de configurare găsit: %s", describe(self.config_screen))
         self.app.click(self.app.path(self.config_screen, "tb_Store", "btn_Section"))
-        self.app.click(self.app.path(self.app.dropdown(), "pnl_Content", "ConfigurationMenu", "tbl_Layout",
-                                     "btn_RiskProcesses"))
+        self.app.click(self._buton_sectiune_procese())
         self.app.wait(self.tree)
+
+    def _buton_sectiune_procese(self):
+        """Elementul 'Proces/Aria/Sub Aria' din meniul de secțiuni (btn_RiskProcesses), cu rezervă după text."""
+        dd = self.app.dropdown()
+        btn = self.app.path(dd, "pnl_Content", "ConfigurationMenu", "tbl_Layout", "btn_RiskProcesses")
+        if self.app.exists(btn, timeout=3):
+            return btn
+        log.info("btn_RiskProcesses negăsit după auto_id; caut după textul 'Proces/Aria/Sub Aria'")
+        return dd.child_window(title_re=r"^Proces\s*/\s*Aria\s*/\s*Sub\s*Aria.*")
 
     def adauga_nod(self, nume: str, tip: str, parinte: str | None) -> None:
         log.info("Adaugare %s: %s", tip, nume)

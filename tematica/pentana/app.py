@@ -23,7 +23,7 @@ import time
 from typing import Iterable, Optional, Tuple, Union
 
 import pyperclip
-from pywinauto import Application, keyboard
+from pywinauto import Application, Desktop, keyboard
 from pywinauto.findwindows import ElementNotFoundError
 from pywinauto.timings import TimeoutError as PwTimeoutError
 
@@ -111,10 +111,33 @@ class PentanaApp:
         assert self.app is not None, "Aplicația nu este pornită (start()/attach())"
         return self.app.window(auto_id=self.main_id)
 
-    def window(self, auto_id: str, index: int = 0):
-        """Fereastră de nivel superior a procesului Pentana (editoare, DropDownComponentWindow etc.)."""
+    def _resolve(self, timeout: Optional[float] = None, **criteria):
+        """Găsește o fereastră/un panou după criterii (auto_id=..., title=...), căutând pe rând:
+        fereastră de nivel superior a procesului, fereastră pe desktop aparținând procesului (pop-up-uri),
+        copil al ferestrei principale (ecranele Pentana sunt panouri în MKInsightMainUI)."""
         assert self.app is not None
-        return self.app.window(auto_id=auto_id, found_index=index)
+        candidates = [
+            self.app.window(**criteria),
+            Desktop(backend="uia").window(process=self.app.process, **criteria),
+        ]
+        if criteria.get("auto_id") != self.main_id:
+            candidates.append(self.main.child_window(**criteria))
+        deadline = time.monotonic() + (timeout or self.timeout)
+        while True:
+            for spec in candidates:
+                if self.exists(spec, timeout=0.5):
+                    return spec
+            if time.monotonic() >= deadline:
+                raise ApplicationException(
+                    f"Nu am găsit fereastra {criteria} în {timeout or self.timeout}s. Ferestre deschise:\n"
+                    + self.dump_windows()
+                )
+
+    def window(self, auto_id: str, timeout: Optional[float] = None):
+        """O fereastră a aplicației după auto_id (editoare, DropDownComponentWindow, ConfigurationScreen...)."""
+        return self._resolve(timeout, auto_id=auto_id)
+
+    screen = window  # alias istoric
 
     def dropdown(self):
         """<wnd ctrlname='DropDownComponentWindow' /> - fereastra pop-up folosită pentru toate listele."""
@@ -122,10 +145,8 @@ class PentanaApp:
 
     def popup_menu(self, owner_auto_id: Optional[str] = None):
         """<wnd aaname='DropDown' cls='WindowsForms10.Window.*' /><ctrl name='DropDown' role='popup menu' />."""
-        assert self.app is not None
-        if owner_auto_id:
-            return self.app.window(auto_id=owner_auto_id).child_window(title="DropDown", control_type="Menu")
-        return self.app.window(title="DropDown").child_window(title="DropDown", control_type="Menu")
+        owner = self.window(owner_auto_id) if owner_auto_id else self._resolve(title="DropDown")
+        return owner.child_window(title="DropDown", control_type="Menu")
 
     @staticmethod
     def path(parent, *steps: Step):
@@ -147,34 +168,27 @@ class PentanaApp:
                 f"Nu am găsit elementul în {timeout or self.timeout}s: {describe(spec)}"
             ) from exc
 
-    def screen(self, auto_id: str, timeout: Optional[float] = None):
-        """Un ecran al aplicației (ex. ConfigurationScreen): îl caută ca fereastră de nivel superior a procesului
-        și, dacă nu există acolo, ca fereastră-copil a ferestrei principale."""
-        deadline = time.monotonic() + (timeout or self.timeout)
-        candidates = (self.window(auto_id), self.main.child_window(auto_id=auto_id))
-        while True:
-            for spec in candidates:
-                if self.exists(spec, timeout=1):
-                    return spec
-            if time.monotonic() >= deadline:
-                raise ApplicationException(
-                    f"Nu am găsit ecranul '{auto_id}' în {timeout or self.timeout}s. Ferestre deschise:\n"
-                    + self.dump_windows()
-                )
-
     def dump_windows(self) -> str:
-        """Lista ferestrelor de nivel superior ale procesului Pentana - pentru diagnosticare în log."""
+        """Ferestrele procesului Pentana (de pe desktop) și copiii direcți ai ferestrei principale - pentru log."""
         if self.app is None:
             return "(aplicația nu este pornită)"
         lines = []
+
+        def fmt(w, indent="  "):
+            ei = w.element_info
+            return (f"{indent}auto_id={ei.automation_id!r} title={ei.name!r} type={ei.control_type!r} "
+                    f"class={ei.class_name!r} visible={ei.visible} rect={ei.rectangle}")
+
         try:
-            for w in self.app.windows():
-                ei = w.element_info
-                lines.append(f"  auto_id={ei.automation_id!r} title={ei.name!r} class={ei.class_name!r} "
-                             f"visible={ei.visible} rect={ei.rectangle}")
+            lines.append(" ferestre pe desktop (procesul Pentana):")
+            for w in Desktop(backend="uia").windows(process=self.app.process):
+                lines.append(fmt(w))
+            lines.append(" copiii direcți ai ferestrei principale:")
+            for w in self.main.wrapper_object().children():
+                lines.append(fmt(w, "    "))
         except Exception as exc:  # noqa: BLE001
             lines.append(f"  (eroare la listare: {exc})")
-        return "\n".join(lines) or "  (nicio fereastră)"
+        return "\n".join(lines)
 
     def pause(self, factor: float = 1.0) -> None:
         time.sleep(self.delay * factor)
