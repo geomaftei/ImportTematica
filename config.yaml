@@ -4,9 +4,10 @@
 pentana:
   exe: 'C:\Program Files (x86)\Ideagen\Ideagen Internal Audit MK\PentanaMK.exe'
   main_window_auto_id: MKInsightMainUI
-  # Cât se așteaptă, cel mult, după pornire ca aplicația să se încarce / să apară ecranul de login
+  # Cât se așteaptă, cel mult, ca aplicația să se autentifice singură și să se încarce după pornire
   # (robotul UiPath aștepta fix 12 secunde; aici se merge mai departe imediat ce meniul din stânga apare).
-  login_delay_s: 20
+  # Credențialele din .env se folosesc doar dacă formularul de login rămâne afișat fără "Please wait...".
+  login_delay_s: 90
   # Pauză după ce aplicația pare gata (meniul "Instrumente" activ), înainte de prima acțiune.
   ready_delay_s: 2
   wait_timeout_s: 15

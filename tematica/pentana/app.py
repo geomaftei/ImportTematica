@@ -65,20 +65,37 @@ class PentanaApp:
                 self.imagini.click("live_configuration", timeout=1)
                 log.info("Am ales modulul 'Live Configuration'")
         self.main.wait("exists visible", timeout=max(self.timeout, 60))
-        # "Delay logare in aplicatie": așteptăm până se încarcă meniul din stânga sau apare panoul de login,
-        # cel mult login_delay_s
-        deadline = time.monotonic() + float(self.cfg.get("pentana.login_delay_s", 12))
-        while time.monotonic() < deadline:
-            if self._login_visible():
+        # "Delay logare in aplicatie": aplicația se autentifică singură (SSO); așteptăm cel mult login_delay_s
+        # să apară meniul, iar dacă în schimb a rămas afișat formularul de login, îl completăm noi
+        deadline = time.monotonic() + float(self.cfg.get("pentana.login_delay_s", 90))
+        login_trimis = False
+        while time.monotonic() < deadline and not self._ready():
+            if not login_trimis and self._login_visible() and not self._login_in_progress():
+                log.info("Formularul de autentificare a rămas afișat; completez credențialele din .env")
                 self.login()
-                break
-            if self.exists(self.main.child_window(auto_id="pnl_SectionMenu"), timeout=1):
-                break
-        # bara de meniu se încarcă ultima: așteptăm elementul "Instrumente"
-        self.wait(self.main.child_window(title_re=r"^Instrumente.*", control_type="MenuItem"), timeout=60)
+                login_trimis = True
+            time.sleep(1)
+        # bara de meniu se încarcă ultima: așteptăm elementul "Instrumente" ("Tools" înainte de login)
+        self.wait(self._menu_instrumente(), timeout=60)
         time.sleep(float(self.cfg.get("pentana.ready_delay_s", 2)))
         log.info("Pentana este pornită")
         return self
+
+    def _menu_instrumente(self):
+        return self.main.child_window(title_re=r"^(Instrumente|Tools).*", control_type="MenuItem")
+
+    def _ready(self) -> bool:
+        """Aplicația e autentificată și încărcată: meniul din stânga există și formularul de login a dispărut."""
+        return (self.exists(self.main.child_window(auto_id="pnl_SectionMenu"), timeout=1)
+                and not self._login_visible())
+
+    def _login_in_progress(self) -> bool:
+        """'Please wait while Ideagen Internal Audit logs in to your account...' (lbl_LoginWait) este afișat."""
+        try:
+            lbl = self.main.child_window(auto_id="lbl_LoginWait")
+            return lbl.exists(timeout=1) and lbl.wrapper_object().is_visible()
+        except Exception:
+            return False
 
     def attach(self) -> "PentanaApp":
         """Se leagă de o instanță Pentana deja deschisă (util la depanare)."""
@@ -88,8 +105,10 @@ class PentanaApp:
         return self
 
     def _login_visible(self) -> bool:
+        """Formularul de autentificare este afișat efectiv (câmpul de utilizator există și e vizibil)."""
         try:
-            return self.main.child_window(auto_id="pnl_Login").exists(timeout=1)
+            camp = self.main.child_window(auto_id="txt_UserName")
+            return camp.exists(timeout=1) and camp.wrapper_object().is_visible()
         except Exception:
             return False
 
