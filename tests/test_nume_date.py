@@ -60,3 +60,20 @@ def test_parseaza_data(text, asteptat):
 def test_data_invalida():
     with pytest.raises(ValueError):
         parseaza_data("sfarsitul lunii")
+
+
+@pytest.mark.parametrize("celula", [
+    "Antonella Maria, George, Tudor",      # virgulă
+    "Antonella Maria; George; Tudor",      # punct și virgulă
+    "Antonella Maria\nGeorge\nTudor",      # rânduri noi în celulă (Alt+Enter)
+    "Antonella Maria\r\nGeorge;Tudor ,",   # amestecat, cu separator la final
+])
+def test_separatori_auditori(celula):
+    assert imparte_auditori(celula) == ["Antonella Maria", "George", "Tudor"]
+
+
+def test_nume_incomplet_din_excel():
+    lista = ["Antonella Maria Timis", "George Maftei", "Tudor Pop", "George Enescu"]
+    assert potriveste_nume("Antonella Maria", lista).gasit == "Antonella Maria Timis"
+    assert potriveste_nume("Tudor", lista).gasit == "Tudor Pop" and potriveste_nume("Tudor", lista).partiala
+    assert potriveste_nume("George", lista).gasit is None  # doi George în listă -> ambiguu, nu se bifează
