@@ -305,14 +305,23 @@ class IntroducereRiscuri:
         app.click_ok(editor)
 
     def _alege_lista_raspunsuri(self, editor, details, nume_lista: str) -> None:
+        """"Liste răspunsuri": robotul deschidea meniul m_AnswerLists și alegea lista. În Pentana clicul pe partea
+        principală a butonului poate aplica direct lista (răspunsurile apar în lst_Answers, fără meniu) - atunci
+        mergem mai departe."""
         app = self.app
         answers = app.path(details, "c_Answers", "tb_Main")
         app.hover(answers.child_window(auto_id="btn_AnswerLists"))
         app.click_image("liste_raspunsuri", within=editor, fallback=answers.child_window(auto_id="btn_AnswerLists"))
-        menu = app.window("m_AnswerLists")
+        try:
+            menu = app.window("m_AnswerLists", timeout=3)
+        except ApplicationException:
+            # rândurile listei de răspunsuri sunt desenate de control și nu apar în UIA, deci nu le putem număra
+            log.info("Meniul listelor de răspunsuri nu a apărut: lista a fost aplicată direct de buton")
+            return
         item = menu.child_window(title_re="^" + nume_lista + ".*", control_type="MenuItem")
         if app.exists(item, timeout=3):
             app.click(item)
+            log.info("Lista de răspunsuri aleasă: %s", nume_lista)
         else:
             raise ApplicationException(
                 f"Nu am găsit lista de răspunsuri '{nume_lista}' în meniul m_AnswerLists "
