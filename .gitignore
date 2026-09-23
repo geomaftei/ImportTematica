@@ -6,3 +6,4 @@ Data/Exceptions_Screenshots/
 __pycache__/
 *.pyc
 .pytest_cache/
+uipath/**/.local/

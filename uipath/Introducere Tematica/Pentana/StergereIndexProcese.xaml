@@ -1,0 +1,384 @@
+<Activity mc:Ignorable="sap sap2010" x:Class="StergereIndexProcese" xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:mva="clr-namespace:Microsoft.VisualBasic.Activities;assembly=System.Activities" xmlns:sap="http://schemas.microsoft.com/netfx/2009/xaml/activities/presentation" xmlns:sap2010="http://schemas.microsoft.com/netfx/2010/xaml/activities/presentation" xmlns:scg="clr-namespace:System.Collections.Generic;assembly=mscorlib" xmlns:sco="clr-namespace:System.Collections.ObjectModel;assembly=mscorlib" xmlns:sd="clr-namespace:System.Data;assembly=System.Data" xmlns:ui="http://schemas.uipath.com/workflow/activities" xmlns:uix="http://schemas.uipath.com/workflow/activities/uix" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <x:Members>
+    <x:Property Name="Procese" Type="InArgument(sd:DataTable)" />
+  </x:Members>
+  <mva:VisualBasic.Settings>
+    <x:Null />
+  </mva:VisualBasic.Settings>
+  <sap:VirtualizedContainerService.HintSize>465.2,703.4</sap:VirtualizedContainerService.HintSize>
+  <sap2010:WorkflowViewState.IdRef>StergereIndexProcese_1</sap2010:WorkflowViewState.IdRef>
+  <TextExpression.NamespacesForImplementation>
+    <sco:Collection x:TypeArguments="x:String">
+      <x:String>Microsoft.VisualBasic</x:String>
+      <x:String>Microsoft.VisualBasic.Activities</x:String>
+      <x:String>System</x:String>
+      <x:String>System.Activities</x:String>
+      <x:String>System.Activities.Expressions</x:String>
+      <x:String>System.Activities.Statements</x:String>
+      <x:String>System.Activities.Validation</x:String>
+      <x:String>System.Activities.XamlIntegration</x:String>
+      <x:String>System.Collections</x:String>
+      <x:String>System.Collections.Generic</x:String>
+      <x:String>System.Collections.ObjectModel</x:String>
+      <x:String>System.Data</x:String>
+      <x:String>System.Diagnostics</x:String>
+      <x:String>System.Drawing</x:String>
+      <x:String>System.IO</x:String>
+      <x:String>System.Linq</x:String>
+      <x:String>System.Net.Mail</x:String>
+      <x:String>System.Windows.Markup</x:String>
+      <x:String>System.Xml</x:String>
+      <x:String>System.Xml.Linq</x:String>
+      <x:String>System.Xml.Serialization</x:String>
+      <x:String>UiPath.Core</x:String>
+      <x:String>UiPath.Core.Activities</x:String>
+      <x:String>UiPath.UIAutomationNext.Enums</x:String>
+    </sco:Collection>
+  </TextExpression.NamespacesForImplementation>
+  <TextExpression.ReferencesForImplementation>
+    <sco:Collection x:TypeArguments="AssemblyReference">
+      <AssemblyReference>Microsoft.Bcl.AsyncInterfaces</AssemblyReference>
+      <AssemblyReference>Microsoft.VisualBasic</AssemblyReference>
+      <AssemblyReference>mscorlib</AssemblyReference>
+      <AssemblyReference>NPOI</AssemblyReference>
+      <AssemblyReference>PresentationCore</AssemblyReference>
+      <AssemblyReference>PresentationFramework</AssemblyReference>
+      <AssemblyReference>System</AssemblyReference>
+      <AssemblyReference>System.Activities</AssemblyReference>
+      <AssemblyReference>System.ComponentModel.Composition</AssemblyReference>
+      <AssemblyReference>System.ComponentModel.TypeConverter</AssemblyReference>
+      <AssemblyReference>System.Core</AssemblyReference>
+      <AssemblyReference>System.Data</AssemblyReference>
+      <AssemblyReference>System.Data.DataSetExtensions</AssemblyReference>
+      <AssemblyReference>System.Drawing</AssemblyReference>
+      <AssemblyReference>System.Linq</AssemblyReference>
+      <AssemblyReference>System.Memory</AssemblyReference>
+      <AssemblyReference>System.ObjectModel</AssemblyReference>
+      <AssemblyReference>System.ServiceModel</AssemblyReference>
+      <AssemblyReference>System.ValueTuple</AssemblyReference>
+      <AssemblyReference>System.Xaml</AssemblyReference>
+      <AssemblyReference>System.Xml</AssemblyReference>
+      <AssemblyReference>System.Xml.Linq</AssemblyReference>
+      <AssemblyReference>UiPath.System.Activities</AssemblyReference>
+      <AssemblyReference>UiPath.System.Activities.Design</AssemblyReference>
+      <AssemblyReference>UiPath.UiAutomation.Activities</AssemblyReference>
+      <AssemblyReference>UiPath.UIAutomationNext</AssemblyReference>
+      <AssemblyReference>WindowsBase</AssemblyReference>
+    </sco:Collection>
+  </TextExpression.ReferencesForImplementation>
+  <Sequence DisplayName="StergereIndexProcese" sap:VirtualizedContainerService.HintSize="475.2,678.4" sap2010:WorkflowViewState.IdRef="Sequence_1">
+    <sap:WorkflowViewStateService.ViewState>
+      <scg:Dictionary x:TypeArguments="x:String, x:Object">
+        <x:Boolean x:Key="IsExpanded">True</x:Boolean>
+      </scg:Dictionary>
+    </sap:WorkflowViewStateService.ViewState>
+    <uix:NApplicationCard AttachMode="ByInstance" DisplayName="Use Application: Pentana Audit - Live" sap:VirtualizedContainerService.HintSize="433.6,585.6" sap2010:WorkflowViewState.IdRef="NApplicationCard_1" ScopeGuid="6d16f351-4342-431a-a7ef-613a2371dba2" Version="V2">
+      <uix:NApplicationCard.Body>
+        <ActivityAction x:TypeArguments="x:Object">
+          <ActivityAction.Argument>
+            <DelegateInArgument x:TypeArguments="x:Object" Name="WSSessionData" />
+          </ActivityAction.Argument>
+          <Sequence DisplayName="Do" sap:VirtualizedContainerService.HintSize="375.2,294.4" sap2010:WorkflowViewState.IdRef="Sequence_2">
+            <sap:WorkflowViewStateService.ViewState>
+              <scg:Dictionary x:TypeArguments="x:String, x:Object">
+                <x:Boolean x:Key="IsExpanded">True</x:Boolean>
+              </scg:Dictionary>
+            </sap:WorkflowViewStateService.ViewState>
+            <ui:ForEachRow ColumnNames="{x:Null}" CurrentIndex="{x:Null}" DataTable="[Procese]" DisplayName="For Each Row in Data Table" sap:VirtualizedContainerService.HintSize="333.6,52.8" sap2010:WorkflowViewState.IdRef="ForEachRow_1">
+              <ui:ForEachRow.Body>
+                <ActivityAction x:TypeArguments="sd:DataRow">
+                  <ActivityAction.Argument>
+                    <DelegateInArgument x:TypeArguments="sd:DataRow" Name="Proces" />
+                  </ActivityAction.Argument>
+                  <Sequence DisplayName="Body" sap:VirtualizedContainerService.HintSize="241.6,272" sap2010:WorkflowViewState.IdRef="Sequence_3">
+                    <sap:WorkflowViewStateService.ViewState>
+                      <scg:Dictionary x:TypeArguments="x:String, x:Object">
+                        <x:Boolean x:Key="IsExpanded">True</x:Boolean>
+                      </scg:Dictionary>
+                    </sap:WorkflowViewStateService.ViewState>
+                    <Sequence DisplayName="Deschide ferreastra" sap:VirtualizedContainerService.HintSize="200,68.8" sap2010:WorkflowViewState.IdRef="Sequence_4">
+                      <sap:WorkflowViewStateService.ViewState>
+                        <scg:Dictionary x:TypeArguments="x:String, x:Object">
+                          <x:Boolean x:Key="IsExpanded">False</x:Boolean>
+                          <x:Boolean x:Key="IsPinned">False</x:Boolean>
+                        </scg:Dictionary>
+                      </sap:WorkflowViewStateService.ViewState>
+                      <ui:SendHotkey ClickBeforeTyping="{x:Null}" DelayBefore="{x:Null}" DelayBetweenKeys="{x:Null}" DelayMS="{x:Null}" EmptyField="{x:Null}" SendWindowMessages="{x:Null}" SpecialKey="{x:Null}" Activate="True" DisplayName="Accesare Meniu Instrumente" sap:VirtualizedContainerService.HintSize="333.6,157.6" sap2010:WorkflowViewState.IdRef="SendHotkey_1" Key="i" KeyModifiers="Alt">
+                        <ui:SendHotkey.Target>
+                          <ui:Target ClippingRegion="{x:Null}" Element="{x:Null}" Id="79d306a7-b84a-4e61-a0a5-8ee438e7c46d" InformativeScreenshot="2ef6969cf165452773a99c94ffeb76ef" Selector="&lt;wnd app='pentanamk.exe' ctrlname='MKInsightMainUI' /&gt;">
+                            <ui:Target.TimeoutMS>
+                              <InArgument x:TypeArguments="x:Int32" />
+                            </ui:Target.TimeoutMS>
+                            <ui:Target.WaitForReady>
+                              <InArgument x:TypeArguments="ui:WaitForReady" />
+                            </ui:Target.WaitForReady>
+                          </ui:Target>
+                        </ui:SendHotkey.Target>
+                      </ui:SendHotkey>
+                      <ui:SendHotkey ClickBeforeTyping="{x:Null}" DelayBefore="{x:Null}" DelayBetweenKeys="{x:Null}" DelayMS="{x:Null}" EmptyField="{x:Null}" SendWindowMessages="{x:Null}" SpecialKey="{x:Null}" Activate="True" DisplayName="Accesare Meniu Configurare" sap:VirtualizedContainerService.HintSize="333.6,157.6" sap2010:WorkflowViewState.IdRef="SendHotkey_2" Key="c" KeyModifiers="None">
+                        <ui:SendHotkey.Target>
+                          <ui:Target ClippingRegion="{x:Null}" Element="{x:Null}" Id="79d306a7-b84a-4e61-a0a5-8ee438e7c46d" InformativeScreenshot="2ef6969cf165452773a99c94ffeb76ef" Selector="&lt;wnd app='pentanamk.exe' ctrlname='MKInsightMainUI' /&gt;">
+                            <ui:Target.TimeoutMS>
+                              <InArgument x:TypeArguments="x:Int32" />
+                            </ui:Target.TimeoutMS>
+                            <ui:Target.WaitForReady>
+                              <InArgument x:TypeArguments="ui:WaitForReady" />
+                            </ui:Target.WaitForReady>
+                          </ui:Target>
+                        </ui:SendHotkey.Target>
+                        <sap:WorkflowViewStateService.ViewState>
+                          <scg:Dictionary x:TypeArguments="x:String, x:Object">
+                            <x:Boolean x:Key="IsExpanded">True</x:Boolean>
+                            <x:Boolean x:Key="IsPinned">False</x:Boolean>
+                          </scg:Dictionary>
+                        </sap:WorkflowViewStateService.ViewState>
+                      </ui:SendHotkey>
+                      <ui:SendHotkey ClickBeforeTyping="{x:Null}" DelayBefore="{x:Null}" DelayBetweenKeys="{x:Null}" DelayMS="{x:Null}" EmptyField="{x:Null}" SendWindowMessages="{x:Null}" SpecialKey="{x:Null}" Activate="True" DisplayName="Accesare Meniu Configurare" sap:VirtualizedContainerService.HintSize="333.6,157.6" sap2010:WorkflowViewState.IdRef="SendHotkey_3" Key="c" KeyModifiers="None">
+                        <ui:SendHotkey.Target>
+                          <ui:Target ClippingRegion="{x:Null}" Element="{x:Null}" Id="79d306a7-b84a-4e61-a0a5-8ee438e7c46d" InformativeScreenshot="2ef6969cf165452773a99c94ffeb76ef" Selector="&lt;wnd app='pentanamk.exe' ctrlname='MKInsightMainUI' /&gt;">
+                            <ui:Target.TimeoutMS>
+                              <InArgument x:TypeArguments="x:Int32" />
+                            </ui:Target.TimeoutMS>
+                            <ui:Target.WaitForReady>
+                              <InArgument x:TypeArguments="ui:WaitForReady" />
+                            </ui:Target.WaitForReady>
+                          </ui:Target>
+                        </ui:SendHotkey.Target>
+                        <sap:WorkflowViewStateService.ViewState>
+                          <scg:Dictionary x:TypeArguments="x:String, x:Object">
+                            <x:Boolean x:Key="IsExpanded">True</x:Boolean>
+                            <x:Boolean x:Key="IsPinned">False</x:Boolean>
+                          </scg:Dictionary>
+                        </sap:WorkflowViewStateService.ViewState>
+                      </ui:SendHotkey>
+                      <ui:SendHotkey ClickBeforeTyping="{x:Null}" DelayBefore="{x:Null}" DelayBetweenKeys="{x:Null}" DelayMS="{x:Null}" EmptyField="{x:Null}" SendWindowMessages="{x:Null}" Activate="True" DisplayName="Accesare Meniu Configurare" sap:VirtualizedContainerService.HintSize="333.6,157.6" sap2010:WorkflowViewState.IdRef="SendHotkey_4" Key="enter" KeyModifiers="None" SpecialKey="True">
+                        <ui:SendHotkey.Target>
+                          <ui:Target ClippingRegion="{x:Null}" Element="{x:Null}" Id="79d306a7-b84a-4e61-a0a5-8ee438e7c46d" InformativeScreenshot="2ef6969cf165452773a99c94ffeb76ef" Selector="&lt;wnd app='pentanamk.exe' ctrlname='MKInsightMainUI' /&gt;">
+                            <ui:Target.TimeoutMS>
+                              <InArgument x:TypeArguments="x:Int32" />
+                            </ui:Target.TimeoutMS>
+                            <ui:Target.WaitForReady>
+                              <InArgument x:TypeArguments="ui:WaitForReady" />
+                            </ui:Target.WaitForReady>
+                          </ui:Target>
+                        </ui:SendHotkey.Target>
+                      </ui:SendHotkey>
+                      <Delay DisplayName="Delay 3 sec" Duration="00:00:03" sap:VirtualizedContainerService.HintSize="333.6,22.4" sap2010:WorkflowViewState.IdRef="Delay_1" />
+                      <ui:Click AlterIfDisabled="{x:Null}" DelayBefore="{x:Null}" DelayMS="{x:Null}" SendWindowMessages="{x:Null}" SimulateClick="{x:Null}" ClickType="CLICK_SINGLE" DisplayName="Click 'Selectare sectiunea de configurare'" sap:VirtualizedContainerService.HintSize="333.6,107.2" sap2010:WorkflowViewState.IdRef="Click_1" KeyModifiers="None" MouseButton="BTN_LEFT">
+                        <ui:Click.CursorPosition>
+                          <ui:CursorPosition Position="Center">
+                            <ui:CursorPosition.OffsetX>
+                              <InArgument x:TypeArguments="x:Int32" />
+                            </ui:CursorPosition.OffsetX>
+                            <ui:CursorPosition.OffsetY>
+                              <InArgument x:TypeArguments="x:Int32" />
+                            </ui:CursorPosition.OffsetY>
+                          </ui:CursorPosition>
+                        </ui:Click.CursorPosition>
+                        <ui:Click.Target>
+                          <ui:Target ClippingRegion="{x:Null}" Element="{x:Null}" Id="f6cc1341-b7ff-435f-80b8-a073b6fdfdcb" InformativeScreenshot="3354169337f5b9639a6efb84c154bec9" Selector="&lt;wnd app='pentanamk.exe' ctrlname='ConfigurationScreen' /&gt;&lt;wnd ctrlname='tb_Store' /&gt;&lt;wnd ctrlname='btn_Section' /&gt;">
+                            <ui:Target.TimeoutMS>
+                              <InArgument x:TypeArguments="x:Int32" />
+                            </ui:Target.TimeoutMS>
+                            <ui:Target.WaitForReady>
+                              <InArgument x:TypeArguments="ui:WaitForReady" />
+                            </ui:Target.WaitForReady>
+                          </ui:Target>
+                        </ui:Click.Target>
+                      </ui:Click>
+                      <ui:SendHotkey ClickBeforeTyping="{x:Null}" DelayBefore="{x:Null}" DelayBetweenKeys="{x:Null}" DelayMS="{x:Null}" EmptyField="{x:Null}" SendWindowMessages="{x:Null}" Activate="True" DisplayName="Accesare Meniu Procese" sap:VirtualizedContainerService.HintSize="333.6,157.6" sap2010:WorkflowViewState.IdRef="SendHotkey_5" Key="enter" KeyModifiers="None" SpecialKey="True">
+                        <ui:SendHotkey.Target>
+                          <ui:Target ClippingRegion="{x:Null}" Element="{x:Null}" Id="79d306a7-b84a-4e61-a0a5-8ee438e7c46d" InformativeScreenshot="adeceff98d8d58772e0f9c96da816c81" Selector="&lt;wnd app='pentanamk.exe' ctrlname='DropDownComponentWindow' /&gt;&lt;wnd ctrlname='pnl_Content' /&gt;&lt;wnd ctrlname='ConfigurationMenu' /&gt;&lt;wnd ctrlname='tbl_Layout' /&gt;&lt;wnd ctrlname='btn_RiskProcesses' /&gt;">
+                            <ui:Target.TimeoutMS>
+                              <InArgument x:TypeArguments="x:Int32" />
+                            </ui:Target.TimeoutMS>
+                            <ui:Target.WaitForReady>
+                              <InArgument x:TypeArguments="ui:WaitForReady" />
+                            </ui:Target.WaitForReady>
+                          </ui:Target>
+                        </ui:SendHotkey.Target>
+                        <sap:WorkflowViewStateService.ViewState>
+                          <scg:Dictionary x:TypeArguments="x:String, x:Object">
+                            <x:Boolean x:Key="IsExpanded">True</x:Boolean>
+                            <x:Boolean x:Key="IsPinned">False</x:Boolean>
+                          </scg:Dictionary>
+                        </sap:WorkflowViewStateService.ViewState>
+                      </ui:SendHotkey>
+                      <ui:SendHotkey ClickBeforeTyping="{x:Null}" DelayBefore="{x:Null}" DelayBetweenKeys="{x:Null}" DelayMS="{x:Null}" EmptyField="{x:Null}" SendWindowMessages="{x:Null}" Activate="True" DisplayName="Selectare Proces" sap:VirtualizedContainerService.HintSize="333.6,157.6" sap2010:WorkflowViewState.IdRef="SendHotkey_6" Key="tab" KeyModifiers="None" SpecialKey="True">
+                        <ui:SendHotkey.Target>
+                          <ui:Target ClippingRegion="{x:Null}" Element="{x:Null}" Id="79d306a7-b84a-4e61-a0a5-8ee438e7c46d" InformativeScreenshot="adeceff98d8d58772e0f9c96da816c81" Selector="&lt;wnd app='pentanamk.exe' ctrlname='DropDownComponentWindow' /&gt;&lt;wnd ctrlname='pnl_Content' /&gt;&lt;wnd ctrlname='ConfigurationMenu' /&gt;&lt;wnd ctrlname='tbl_Layout' /&gt;&lt;wnd ctrlname='btn_RiskProcesses' /&gt;">
+                            <ui:Target.TimeoutMS>
+                              <InArgument x:TypeArguments="x:Int32" />
+                            </ui:Target.TimeoutMS>
+                            <ui:Target.WaitForReady>
+                              <InArgument x:TypeArguments="ui:WaitForReady" />
+                            </ui:Target.WaitForReady>
+                          </ui:Target>
+                        </ui:SendHotkey.Target>
+                        <sap:WorkflowViewStateService.ViewState>
+                          <scg:Dictionary x:TypeArguments="x:String, x:Object">
+                            <x:Boolean x:Key="IsExpanded">True</x:Boolean>
+                            <x:Boolean x:Key="IsPinned">False</x:Boolean>
+                          </scg:Dictionary>
+                        </sap:WorkflowViewStateService.ViewState>
+                      </ui:SendHotkey>
+                      <ui:SendHotkey ClickBeforeTyping="{x:Null}" DelayBefore="{x:Null}" DelayBetweenKeys="{x:Null}" DelayMS="{x:Null}" EmptyField="{x:Null}" SendWindowMessages="{x:Null}" Activate="True" DisplayName="Selectare Proces" sap:VirtualizedContainerService.HintSize="333.6,157.6" sap2010:WorkflowViewState.IdRef="SendHotkey_7" Key="tab" KeyModifiers="None" SpecialKey="True">
+                        <ui:SendHotkey.Target>
+                          <ui:Target ClippingRegion="{x:Null}" Element="{x:Null}" Id="79d306a7-b84a-4e61-a0a5-8ee438e7c46d" InformativeScreenshot="adeceff98d8d58772e0f9c96da816c81" Selector="&lt;wnd app='pentanamk.exe' ctrlname='DropDownComponentWindow' /&gt;&lt;wnd ctrlname='pnl_Content' /&gt;&lt;wnd ctrlname='ConfigurationMenu' /&gt;&lt;wnd ctrlname='tbl_Layout' /&gt;&lt;wnd ctrlname='btn_RiskProcesses' /&gt;">
+                            <ui:Target.TimeoutMS>
+                              <InArgument x:TypeArguments="x:Int32" />
+                            </ui:Target.TimeoutMS>
+                            <ui:Target.WaitForReady>
+                              <InArgument x:TypeArguments="ui:WaitForReady" />
+                            </ui:Target.WaitForReady>
+                          </ui:Target>
+                        </ui:SendHotkey.Target>
+                        <sap:WorkflowViewStateService.ViewState>
+                          <scg:Dictionary x:TypeArguments="x:String, x:Object">
+                            <x:Boolean x:Key="IsExpanded">True</x:Boolean>
+                            <x:Boolean x:Key="IsPinned">False</x:Boolean>
+                          </scg:Dictionary>
+                        </sap:WorkflowViewStateService.ViewState>
+                      </ui:SendHotkey>
+                    </Sequence>
+                    <Sequence DisplayName="Scrierea Numelui, Procesului Adaugat" sap:VirtualizedContainerService.HintSize="200,68.8" sap2010:WorkflowViewState.IdRef="Sequence_5">
+                      <sap:WorkflowViewStateService.ViewState>
+                        <scg:Dictionary x:TypeArguments="x:String, x:Object">
+                          <x:Boolean x:Key="IsExpanded">False</x:Boolean>
+                          <x:Boolean x:Key="IsPinned">False</x:Boolean>
+                        </scg:Dictionary>
+                      </sap:WorkflowViewStateService.ViewState>
+                      <ui:LogMessage DisplayName="Log Message" sap:VirtualizedContainerService.HintSize="333.6,92.8" sap2010:WorkflowViewState.IdRef="LogMessage_1" Level="Info" Message="[&quot;Schimbare nume Proces: &quot;+Proces.Item(&quot;Proces&quot;).ToString]" />
+                      <ui:SetToClipboard DisplayName="Pregateste numele procesului pentru a fi scris" sap:VirtualizedContainerService.HintSize="333.6,60" sap2010:WorkflowViewState.IdRef="SetToClipboard_1" Text="[Proces.Item(&quot;Proces&quot;).ToString]" />
+                      <ui:SendHotkey ClickBeforeTyping="{x:Null}" DelayBefore="{x:Null}" DelayBetweenKeys="{x:Null}" DelayMS="{x:Null}" EmptyField="{x:Null}" SendWindowMessages="{x:Null}" Activate="True" DisplayName="Selectare Proces" sap:VirtualizedContainerService.HintSize="333.6,157.6" sap2010:WorkflowViewState.IdRef="SendHotkey_8" Key="tab" KeyModifiers="None" SpecialKey="True">
+                        <ui:SendHotkey.Target>
+                          <ui:Target ClippingRegion="{x:Null}" Element="{x:Null}" Id="79d306a7-b84a-4e61-a0a5-8ee438e7c46d" InformativeScreenshot="adeceff98d8d58772e0f9c96da816c81" Selector="&lt;wnd app='pentanamk.exe' ctrlname='DropDownComponentWindow' /&gt;&lt;wnd ctrlname='pnl_Content' /&gt;&lt;wnd ctrlname='ConfigurationMenu' /&gt;&lt;wnd ctrlname='tbl_Layout' /&gt;&lt;wnd ctrlname='btn_RiskProcesses' /&gt;">
+                            <ui:Target.TimeoutMS>
+                              <InArgument x:TypeArguments="x:Int32" />
+                            </ui:Target.TimeoutMS>
+                            <ui:Target.WaitForReady>
+                              <InArgument x:TypeArguments="ui:WaitForReady" />
+                            </ui:Target.WaitForReady>
+                          </ui:Target>
+                        </ui:SendHotkey.Target>
+                        <sap:WorkflowViewStateService.ViewState>
+                          <scg:Dictionary x:TypeArguments="x:String, x:Object">
+                            <x:Boolean x:Key="IsExpanded">True</x:Boolean>
+                            <x:Boolean x:Key="IsPinned">False</x:Boolean>
+                          </scg:Dictionary>
+                        </sap:WorkflowViewStateService.ViewState>
+                      </ui:SendHotkey>
+                      <ui:SendHotkey ClickBeforeTyping="{x:Null}" DelayBefore="{x:Null}" DelayBetweenKeys="{x:Null}" DelayMS="{x:Null}" EmptyField="{x:Null}" SendWindowMessages="{x:Null}" Activate="True" DisplayName="Selectare Proces" sap:VirtualizedContainerService.HintSize="333.6,154.4" sap2010:WorkflowViewState.IdRef="SendHotkey_9" Key="tab" KeyModifiers="None" SpecialKey="True">
+                        <ui:SendHotkey.Target>
+                          <ui:Target ClippingRegion="{x:Null}" Element="{x:Null}" Id="79d306a7-b84a-4e61-a0a5-8ee438e7c46d" InformativeScreenshot="adeceff98d8d58772e0f9c96da816c81" Selector="&lt;wnd app='pentanamk.exe' ctrlname='DropDownComponentWindow' /&gt;&lt;wnd ctrlname='pnl_Content' /&gt;&lt;wnd ctrlname='ConfigurationMenu' /&gt;&lt;wnd ctrlname='tbl_Layout' /&gt;&lt;wnd ctrlname='btn_RiskProcesses' /&gt;">
+                            <ui:Target.TimeoutMS>
+                              <InArgument x:TypeArguments="x:Int32" />
+                            </ui:Target.TimeoutMS>
+                            <ui:Target.WaitForReady>
+                              <InArgument x:TypeArguments="ui:WaitForReady" />
+                            </ui:Target.WaitForReady>
+                          </ui:Target>
+                        </ui:SendHotkey.Target>
+                        <sap:WorkflowViewStateService.ViewState>
+                          <scg:Dictionary x:TypeArguments="x:String, x:Object">
+                            <x:Boolean x:Key="IsExpanded">True</x:Boolean>
+                            <x:Boolean x:Key="IsPinned">False</x:Boolean>
+                          </scg:Dictionary>
+                        </sap:WorkflowViewStateService.ViewState>
+                      </ui:SendHotkey>
+                      <ui:SendHotkey ClickBeforeTyping="{x:Null}" DelayBefore="{x:Null}" DelayBetweenKeys="{x:Null}" DelayMS="{x:Null}" EmptyField="{x:Null}" SendWindowMessages="{x:Null}" Activate="True" DisplayName="Selectare Proces" sap:VirtualizedContainerService.HintSize="333.6,154.4" sap2010:WorkflowViewState.IdRef="SendHotkey_10" Key="tab" KeyModifiers="None" SpecialKey="True">
+                        <ui:SendHotkey.Target>
+                          <ui:Target ClippingRegion="{x:Null}" Element="{x:Null}" Id="79d306a7-b84a-4e61-a0a5-8ee438e7c46d" InformativeScreenshot="adeceff98d8d58772e0f9c96da816c81" Selector="&lt;wnd app='pentanamk.exe' ctrlname='DropDownComponentWindow' /&gt;&lt;wnd ctrlname='pnl_Content' /&gt;&lt;wnd ctrlname='ConfigurationMenu' /&gt;&lt;wnd ctrlname='tbl_Layout' /&gt;&lt;wnd ctrlname='btn_RiskProcesses' /&gt;">
+                            <ui:Target.TimeoutMS>
+                              <InArgument x:TypeArguments="x:Int32" />
+                            </ui:Target.TimeoutMS>
+                            <ui:Target.WaitForReady>
+                              <InArgument x:TypeArguments="ui:WaitForReady" />
+                            </ui:Target.WaitForReady>
+                          </ui:Target>
+                        </ui:SendHotkey.Target>
+                        <sap:WorkflowViewStateService.ViewState>
+                          <scg:Dictionary x:TypeArguments="x:String, x:Object">
+                            <x:Boolean x:Key="IsExpanded">True</x:Boolean>
+                            <x:Boolean x:Key="IsPinned">False</x:Boolean>
+                          </scg:Dictionary>
+                        </sap:WorkflowViewStateService.ViewState>
+                      </ui:SendHotkey>
+                      <ui:SendHotkey ClickBeforeTyping="{x:Null}" DelayBefore="{x:Null}" DelayBetweenKeys="{x:Null}" DelayMS="{x:Null}" EmptyField="{x:Null}" SendWindowMessages="{x:Null}" SpecialKey="{x:Null}" Activate="True" DisplayName="Selecteaza denumirea default a procesului" sap:VirtualizedContainerService.HintSize="333.6,154.4" sap2010:WorkflowViewState.IdRef="SendHotkey_11" Key="a" KeyModifiers="Ctrl">
+                        <ui:SendHotkey.Target>
+                          <ui:Target ClippingRegion="{x:Null}" Element="{x:Null}" Id="17f943e2-f1b2-4e7b-93cd-86db1101a3ae" InformativeScreenshot="20801b84eb62c8f337848be3751c8d14" Selector="&lt;wnd app='pentanamk.exe' ctrlname='ConfigurationScreen' /&gt;&lt;wnd ctrlname='pnl_Sections' /&gt;&lt;wnd ctrlname='RiskProcessSection' /&gt;&lt;wnd ctrlname='tbl_Layout' idx='1' /&gt;&lt;wnd ctrlname='pnl_Background' /&gt;&lt;wnd ctrlname='pnl_Page' /&gt;&lt;wnd ctrlname='c_Page' /&gt;&lt;wnd ctrlname='pnl_Layout' /&gt;&lt;wnd ctrlname='mp_Pages' /&gt;&lt;wnd ctrlname='mpp_Details' /&gt;&lt;wnd ctrlname='tbl_Layout' /&gt;&lt;wnd ctrlname='txt_Name' /&gt;">
+                            <ui:Target.TimeoutMS>
+                              <InArgument x:TypeArguments="x:Int32" />
+                            </ui:Target.TimeoutMS>
+                            <ui:Target.WaitForReady>
+                              <InArgument x:TypeArguments="ui:WaitForReady" />
+                            </ui:Target.WaitForReady>
+                          </ui:Target>
+                        </ui:SendHotkey.Target>
+                      </ui:SendHotkey>
+                      <ui:SendHotkey ClickBeforeTyping="{x:Null}" DelayBefore="{x:Null}" DelayBetweenKeys="{x:Null}" DelayMS="{x:Null}" EmptyField="{x:Null}" SendWindowMessages="{x:Null}" SpecialKey="{x:Null}" Activate="True" DisplayName="Scrie numele de Proces in Tree" sap:VirtualizedContainerService.HintSize="333.6,154.4" sap2010:WorkflowViewState.IdRef="SendHotkey_12" Key="v" KeyModifiers="Ctrl">
+                        <ui:SendHotkey.Target>
+                          <ui:Target ClippingRegion="{x:Null}" Element="{x:Null}" Id="17f943e2-f1b2-4e7b-93cd-86db1101a3ae" InformativeScreenshot="20801b84eb62c8f337848be3751c8d14" Selector="&lt;wnd app='pentanamk.exe' ctrlname='ConfigurationScreen' /&gt;&lt;wnd ctrlname='pnl_Sections' /&gt;&lt;wnd ctrlname='RiskProcessSection' /&gt;&lt;wnd ctrlname='tbl_Layout' idx='1' /&gt;&lt;wnd ctrlname='pnl_Background' /&gt;&lt;wnd ctrlname='pnl_Page' /&gt;&lt;wnd ctrlname='c_Page' /&gt;&lt;wnd ctrlname='pnl_Layout' /&gt;&lt;wnd ctrlname='mp_Pages' /&gt;&lt;wnd ctrlname='mpp_Details' /&gt;&lt;wnd ctrlname='tbl_Layout' /&gt;&lt;wnd ctrlname='txt_Name' /&gt;">
+                            <ui:Target.TimeoutMS>
+                              <InArgument x:TypeArguments="x:Int32" />
+                            </ui:Target.TimeoutMS>
+                            <ui:Target.WaitForReady>
+                              <InArgument x:TypeArguments="ui:WaitForReady" />
+                            </ui:Target.WaitForReady>
+                          </ui:Target>
+                        </ui:SendHotkey.Target>
+                      </ui:SendHotkey>
+                      <ui:Click AlterIfDisabled="{x:Null}" DelayBefore="{x:Null}" DelayMS="{x:Null}" SendWindowMessages="{x:Null}" SimulateClick="{x:Null}" ClickType="CLICK_SINGLE" DisplayName="Click 'Trimite modificari'" sap:VirtualizedContainerService.HintSize="333.6,107.2" sap2010:WorkflowViewState.IdRef="Click_2" KeyModifiers="None" MouseButton="BTN_LEFT">
+                        <ui:Click.CursorPosition>
+                          <ui:CursorPosition Position="Center">
+                            <ui:CursorPosition.OffsetX>
+                              <InArgument x:TypeArguments="x:Int32" />
+                            </ui:CursorPosition.OffsetX>
+                            <ui:CursorPosition.OffsetY>
+                              <InArgument x:TypeArguments="x:Int32" />
+                            </ui:CursorPosition.OffsetY>
+                          </ui:CursorPosition>
+                        </ui:Click.CursorPosition>
+                        <ui:Click.Target>
+                          <ui:Target ClippingRegion="{x:Null}" Element="{x:Null}" Id="0224e19e-86b0-4a9d-8c74-b8ce9aaac2fb" InformativeScreenshot="023d6d5803c23407ec7f1be2baf89c15" Selector="&lt;wnd app='pentanamk.exe' ctrlname='ConfigurationScreen' /&gt;&lt;wnd ctrlname='tb_Store' /&gt;&lt;wnd ctrlname='btn_Submit' /&gt;">
+                            <ui:Target.TimeoutMS>
+                              <InArgument x:TypeArguments="x:Int32" />
+                            </ui:Target.TimeoutMS>
+                            <ui:Target.WaitForReady>
+                              <InArgument x:TypeArguments="ui:WaitForReady" />
+                            </ui:Target.WaitForReady>
+                          </ui:Target>
+                        </ui:Click.Target>
+                      </ui:Click>
+                    </Sequence>
+                  </Sequence>
+                </ActivityAction>
+              </ui:ForEachRow.Body>
+              <sap:WorkflowViewStateService.ViewState>
+                <scg:Dictionary x:TypeArguments="x:String, x:Object">
+                  <x:Boolean x:Key="IsExpanded">False</x:Boolean>
+                  <x:Boolean x:Key="IsPinned">False</x:Boolean>
+                </scg:Dictionary>
+              </sap:WorkflowViewStateService.ViewState>
+            </ui:ForEachRow>
+            <ui:CloseApplication DisplayName="Close Application 'pentanamk.exe Pentana'" sap:VirtualizedContainerService.HintSize="333.6,107.2" sap2010:WorkflowViewState.IdRef="CloseApplication_1">
+              <ui:CloseApplication.Target>
+                <ui:Target ClippingRegion="{x:Null}" Element="{x:Null}" Selector="{x:Null}" Id="be703a2a-ee31-4651-bca1-750a46e2695e" InformativeScreenshot="65c87c5fd5759a285f2f99122a98a2a7">
+                  <ui:Target.TimeoutMS>
+                    <InArgument x:TypeArguments="x:Int32" />
+                  </ui:Target.TimeoutMS>
+                  <ui:Target.WaitForReady>
+                    <InArgument x:TypeArguments="ui:WaitForReady" />
+                  </ui:Target.WaitForReady>
+                </ui:Target>
+              </ui:CloseApplication.Target>
+            </ui:CloseApplication>
+          </Sequence>
+        </ActivityAction>
+      </uix:NApplicationCard.Body>
+      <uix:NApplicationCard.TargetApp>
+        <uix:TargetApp Area="-9, -9, 2418, 1318" FilePath="C:\Program Files (x86)\Ideagen\Pentana Audit MK12.0\pentanamk.exe" IconBase64="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" InformativeScreenshot="0625f4dbf5dc93a228aad34e2defa10b.png" Selector="&lt;wnd app='pentanamk.exe' ctrlname='MKInsightMainUI' /&gt;" />
+      </uix:NApplicationCard.TargetApp>
+    </uix:NApplicationCard>
+  </Sequence>
+</Activity>

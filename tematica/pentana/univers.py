@@ -15,13 +15,13 @@ Structura reală a ecranului (din arborele de controale al aplicației):
         AuditUniverseSection (altă secțiune, ascunsă, cu aceleași auto_id-uri -> căutăm doar în RiskProcessSection)
 Căutările se fac în panouri mici și cu adâncime limitată, pentru că o scanare a arborelui durează secunde.
 
-Robotul UiPath naviga în arbore cu tastele Up/Down și contoare; aici selectăm părintele după nume, nivel cu nivel.
+Poziționarea în arbore e ca la robotul UiPath: nodul nou rămâne selectat, sub-obiect / același nivel din meniu,
+iar la revenirea pe nivelul de sus săgeata sus de câte rânduri s-au adăugat (fără căutări după nume în arbore).
 """
 from __future__ import annotations
 
 import logging
 import time
-from typing import List, Optional
 
 import pyautogui
 from pywinauto import keyboard
@@ -89,15 +89,33 @@ class IntroducereProceseInUnivers:
 
     # --- flux ----------------------------------------------------------
     def ruleaza(self) -> None:
+        """Ca robotul UiPath: nodul nou adăugat rămâne selectat în arbore, iar poziția pentru următorul nod se
+        obține din meniul 'Add item' (sub-obiect / același nivel) și, la revenirea pe un nivel superior, cu
+        săgeata sus în tv_Universe, numărând rândurile adăugate. Nu se caută noduri după nume în arbore."""
         log.info("WorkFlow-ul Introducere Procese in Universul de Procese a pornit")
         self.deschide_ecranul_procese()
-        for proces in self.matrice.procese:
-            nume_proces = self.prefix + proces
-            self.adauga_nod(nume_proces, TIP_PROCES, cale_parinte=[])
-            for arie in self.matrice.arii_pentru(proces):
-                self.adauga_nod(arie, TIP_ARIE, cale_parinte=[nume_proces])
-                for subarie in self.matrice.subarii_pentru(proces, arie):
-                    self.adauga_nod(subarie, TIP_SUBARIE, cale_parinte=[nume_proces, arie])
+        for i, proces in enumerate(self.matrice.procese):
+            if i == 0:
+                # primul proces: lângă un nod de pe primul nivel (implicit "Archived"); următoarele: lângă procesul
+                # anterior, pe care revenim cu săgeata sus la finalul fiecărui proces
+                self._selecteaza_nod_prim_nivel()
+            self.adauga_nod(self.prefix + proces, TIP_PROCES, MENIU_ACELASI_NIVEL)
+            randuri_sub_proces = 0   # arii + sub-arii adăugate sub procesul curent
+            subarii_ultima_arie = 0  # câte rânduri de sub-arie sunt sub aria selectată acum
+            for j, arie in enumerate(self.matrice.arii_pentru(proces)):
+                # prima arie: sub proces; următoarele: la același nivel cu aria anterioară (selectată)
+                self.adauga_nod(arie, TIP_ARIE, MENIU_SUB_OBIECT if j == 0 else MENIU_ACELASI_NIVEL)
+                randuri_sub_proces += 1
+                subarii = self.matrice.subarii_pentru(proces, arie)
+                for k, subarie in enumerate(subarii):
+                    self.adauga_nod(subarie, TIP_SUBARIE, MENIU_SUB_OBIECT if k == 0 else MENIU_ACELASI_NIVEL)
+                randuri_sub_proces += len(subarii)
+                subarii_ultima_arie = len(subarii)
+                if subarii:
+                    # "Click in sus pentru a iesi din Sub Arie": de pe ultima sub-arie înapoi pe arie
+                    self._sus_in_arbore(len(subarii), "înapoi pe aria '%s'" % arie)
+            # de pe ultima arie înapoi pe proces: toate rândurile de sub proces, fără sub-ariile ultimei arii
+            self._sus_in_arbore(randuri_sub_proces - subarii_ultima_arie, "înapoi pe procesul '%s'" % proces)
         self.trimite_modificari()
 
     def deschide_ecranul_procese(self) -> None:
@@ -132,21 +150,13 @@ class IntroducereProceseInUnivers:
         log.info("btn_RiskProcesses negăsit după auto_id; caut după textul 'Proces/Aria/Sub Aria'")
         return dd.child_window(title_re=r"^Proces\s*/\s*Aria\s*/\s*Sub\s*Aria.*")
 
-    def adauga_nod(self, nume: str, tip: str, cale_parinte: List[str]) -> None:
-        log.info("Adaugare %s: %s", tip, nume)
-        if not cale_parinte:
-            # procesul se adaugă la același nivel cu selecția: selectăm întâi un nod de pe primul nivel al
-            # arborelui (implicit "Archived"), ca noul proces să ajungă pe primul nivel, nu în interiorul lui
-            self._selecteaza_nod_prim_nivel()
-            self._deschide_meniul_add_item()
-            self.app.click_menu_item(MENIU_ACELASI_NIVEL)
-        else:
-            log.info("Selectez părintele în arbore: %s", " > ".join(cale_parinte))
-            self.app.select_tree_path(self.tree, cale_parinte)
-            log.info("Deschid meniul 'Add item'")
-            self._deschide_meniul_add_item()
-            log.info("Aleg '%s'", MENIU_SUB_OBIECT)
-            self.app.click_menu_item(MENIU_SUB_OBIECT)
+    def adauga_nod(self, nume: str, tip: str, meniu: str) -> None:
+        """Adaugă un nod relativ la selecția curentă din arbore (meniu = sub-obiect / același nivel)."""
+        log.info("Adaugare %s: %s (%s)", tip, nume, meniu)
+        self._deschide_meniul_add_item()
+        # rezerva din tastatură e cea a robotului: TAB -> primul element (sub-obiect), TAB TAB -> al doilea
+        taste = ("{TAB}",) if meniu == MENIU_SUB_OBIECT else ("{TAB}", "{TAB}")
+        self.app.click_menu_item(meniu, keyboard_fallback=taste + ("{ENTER}",))
         self.app.pause(2)
 
         # "Scrierea Numelui": Ctrl+A pe numele implicit, apoi lipire din clipboard
@@ -176,6 +186,18 @@ class IntroducereProceseInUnivers:
         ales.click_input()
         self.app.pause()
         log.info("Selectat nodul '%s' pentru adăugare la același nivel", ales.window_text())
+
+    def _sus_in_arbore(self, pasi: int, motiv: str) -> None:
+        """Săgeata sus de `pasi` ori în tv_Universe (robotul: "Click in sus pentru a iesi din Sub Arie")."""
+        if pasi <= 0:
+            return
+        log.info("Săgeata sus de %d ori în arbore (%s)", pasi, motiv)
+        self.tree.set_focus()
+        time.sleep(0.3)
+        for _ in range(pasi):
+            keyboard.send_keys("{UP}")
+            time.sleep(0.2)
+        self.app.pause()
 
     def _deschide_meniul_add_item(self) -> None:
         """Deschide meniul butonului "+ Add item ▼" din săgeata neagră (partea de dropdown a split-button-ului).
