@@ -23,6 +23,9 @@ pentana:
   # Nodul de pe primul nivel al arborelui tv_Universe care se selectează înainte de a adăuga un proces
   # ("Adăugare obiect la același nivel ca selecția" -> procesul nou ajunge pe primul nivel, lângă acest nod).
   process_sibling_node: Archived
+  # Centrul pătrățelului risc x control din matrice (după filtrare), față de colțul matricei c_Matrix, în pixeli la
+  # scalarea 100% (valoarea din robot); se înmulțește automat cu scalarea ecranului (125% -> x1.25).
+  celula_matrice_100: [268, 251]
 
 debug:
   # La fiecare eroare de sistem se creează Data/Exceptions_Screenshots/ExceptionReport_<data>.zip cu captura de

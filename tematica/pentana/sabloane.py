@@ -20,10 +20,13 @@ logică cu alt filtru); aici este o singură implementare, `_proceseaza_nod`.
 """
 from __future__ import annotations
 
+import ctypes
 import logging
+import time
 from typing import Dict, List
 
 import pandas as pd
+import pyautogui
 from pywinauto import keyboard
 
 from ..config import Config
@@ -344,40 +347,69 @@ class IntroducereRiscuri:
         app.click_image("aplicare_filtre", within=app.dropdown(), fallback=flt.child_window(auto_id="btn_Apply"))
 
         # după filtrare rămâne o singură celulă risc x control ("in patratel")
-        cell = self._celula_matrice()
-        app.click(cell)
-        # "Creare legătură de risc/control pentru selecție": butonul din bara tb_Links (robotul folosea imaginea
-        # elementului de meniu); meniul contextual al celulei rămâne rezervă
+        app.pause(2)  # matricea se redesenează după filtrare
+        self._click_celula()
+        # "Creare legătură de risc/control pentru selecție": butonul din bara tb_Links, activ doar cu celula selectată
+        # (robotul folosea imaginea elementului de meniu); meniul contextual al celulei rămâne rezervă
         btn = app.path(self.rc_matrix, "tb_Links", "btn_CreateRiskControlLink")
-        if app.exists(btn, timeout=3):
+        if self._activ(btn):
             app.click(btn)
         else:
-            self._meniu_matrice("Creare legătură de risc/control pentru selecție", cell)
+            log.warning("Butonul 'Creare legătură' nu s-a activat după clicul pe celulă; încerc meniul contextual")
+            self._meniu_matrice("Creare legătură de risc/control pentru selecție")
         log.info("Legătura risc/control a fost creată")
 
     def _celula_matrice(self):
         return self.app.path(self.rc_matrix, "pnl_Outer", ("c_Matrix", 0))
 
-    def _meniu_matrice(self, element: str, cell) -> None:
-        """Meniul contextual c_RCMatrixContext; robotul dădea două clicuri pe celulă - noi încercăm și click dreapta."""
+    def _punct_celula(self):
+        """Centrul pătrățelului risc x control rămas după filtrare. Matricea e desenată de control (celulele nu apar
+        în UIA), deci folosim poziția din robot - regiunea (242, 226, 52, 51) față de c_Matrix, la 100% - înmulțită
+        cu scalarea ecranului (la 125% celula e la 302-367 x 282-346)."""
+        cell = self.app.wait(self._celula_matrice())
+        r = cell.rectangle()
+        s = _scalare(cell)
+        x0, y0 = self.cfg.get("pentana.celula_matrice_100", [268, 251])
+        return r.left + int(round(x0 * s)), r.top + int(round(y0 * s))
+
+    def _click_celula(self, right: bool = False) -> None:
+        x, y = self._punct_celula()
+        log.info("Clic%s pe celula risc/control la (%d, %d)", " dreapta" if right else "", x, y)
+        pyautogui.click(x, y, button="right" if right else "left")
+        self.app.pause()
+
+    def _activ(self, spec, timeout: float = 3) -> bool:
+        """Butonul există și devine activ în `timeout` secunde."""
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                if self.app.exists(spec, timeout=0) and spec.wrapper_object().is_enabled():
+                    return True
+            except Exception:  # noqa: BLE001
+                pass
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(0.3)
+
+    def _meniu_matrice(self, element: str) -> None:
+        """Meniul contextual c_RCMatrixContext al celulei (clic dreapta pe celulă)."""
         app = self.app
+        self._click_celula(right=True)
         menu = app.popup_menu("c_RCMatrixContext")
         item = menu.child_window(title_re="^" + element.replace("(", r"\(").replace(")", r"\)") + "$",
                                  control_type="MenuItem")
-        if not app.exists(item, timeout=2):
-            app.click(cell, right=True)
         app.click(item)
 
     # --- teste -------------------------------------------------------------
     def deschide_teste(self) -> None:
         """"Editare teste pt control": butonul btn_EditTests (ramura Arie) sau meniul celulei (ramura Sub-arie)."""
         btn = self.app.path(self.rc_matrix, "tb_Links", "btn_EditTests")
-        if self.app.exists(btn, timeout=3):
+        if not self._activ(btn):
+            self._click_celula()  # butonul e activ doar cu celula risc/control selectată
+        if self._activ(btn):
             self.app.click(btn)
             return
-        cell = self._celula_matrice()
-        self.app.click(cell)
-        self._meniu_matrice("Editare teste", cell)
+        self._meniu_matrice("Editare teste")
 
     def inchide_teste(self) -> None:
         log.info("Merg la urmatorul test")
@@ -432,3 +464,14 @@ def _camp_lista(meta, eticheta: str):
 def _camp_text(meta, eticheta_re: str):
     """Câmpul de text (RichEdit) de lângă etichetă: cls='WindowsForms10.RICHEDIT60W.*' ca în selectorul robotului."""
     return meta.child_window(title_re=eticheta_re, class_name_re=r"WindowsForms10\.RICHEDIT.*")
+
+
+def _scalare(wrapper) -> float:
+    """Scalarea ecranului pentru fereastra controlului (1.0 la 100%, 1.25 la 125%...)."""
+    try:
+        dpi = ctypes.windll.user32.GetDpiForWindow(wrapper.handle)
+        if dpi:
+            return dpi / 96.0
+    except Exception:  # noqa: BLE001
+        pass
+    return 1.0
