@@ -55,6 +55,7 @@ python main.py --dry-run                     # doar verifică Excel-ul și afiș
 python main.py --file alta_matrice.xlsx      # altă matrice
 python main.py --only riscuri --attach       # un singur pas, pe o instanță Pentana deja deschisă și autentificată
 python tools/genereaza_exemplu.py            # scrie o matrice de exemplu în Data/Input/
+python tools/analiza_timp.py                 # unde s-a dus timpul în ultima rulare (fără date din matrice)
 ```
 
 Pentru a sări peste crearea Universului de procese (când a fost deja introdus), pune în `config.yaml`

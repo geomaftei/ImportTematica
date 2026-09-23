@@ -11,6 +11,7 @@ de părinte, ca la un selector UiPath cu <wnd ctrlname=... /> care sare peste ni
 """
 from __future__ import annotations
 
+import ctypes
 import re
 import time
 from collections import deque
@@ -171,6 +172,62 @@ def copii_cu_nume(parinte, control_type: Optional[str] = "TreeItem"):
         if control_type is None or IUIA().known_control_type_ids.get(c.CachedControlType) == control_type:
             rezultat.append((c, c.CachedName or ""))
     return rezultat
+
+
+def _ferestre_vizibile(pid: int) -> List[int]:
+    """Handle-urile ferestrelor de nivel superior vizibile ale procesului, în ordinea Z (cea din față prima)."""
+    user32 = ctypes.windll.user32
+    rezultat: List[int] = []
+
+    @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+    def colecteaza(hwnd, _):
+        proces = ctypes.c_ulong()
+        user32.GetWindowThreadProcessId(ctypes.c_void_p(hwnd), ctypes.byref(proces))
+        if proces.value == pid and user32.IsWindowVisible(ctypes.c_void_p(hwnd)):
+            rezultat.append(hwnd)
+        return True
+
+    user32.EnumWindows(colecteaza, None)
+    return rezultat
+
+
+class FereastraProces:
+    """Fereastră de nivel superior a unui proces, găsită dintr-un singur apel UIA (copiii desktopului cu
+    ProcessId-ul dat), în loc de enumerarea pywinauto (~0,4 s). Se comportă ca un WindowSpecification pentru
+    FastSpec (exists / wrapper_object / criteria)."""
+
+    def __init__(self, pid: int, **criteria):
+        self.pid = pid
+        self._potrivire = _Potrivire(criteria)
+        self.criteria = [dict(criteria, process=pid)]
+
+    def _gaseste(self):
+        # EnumWindows (Win32) dă instant ferestrele de nivel superior ale procesului; enumerarea copiilor
+        # desktopului prin UIA durează ~0,4 s, pentru că trece prin toate ferestrele deschise
+        cr = _cache_request()
+        for hwnd in _ferestre_vizibile(self.pid):
+            try:
+                el = IUIA().iuia.ElementFromHandleBuildCache(hwnd, cr)
+                if self._potrivire(el):
+                    return el
+            except Exception:  # noqa: BLE001 - fereastra s-a închis între timp
+                continue
+        return None
+
+    def exists(self, timeout: Optional[float] = None, retry_interval: Optional[float] = None) -> bool:
+        deadline = time.monotonic() + (timeout or 0)
+        while True:
+            if self._gaseste() is not None:
+                return True
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(0.1)
+
+    def wrapper_object(self):
+        el = self._gaseste()
+        if el is None:
+            raise ElementNotFoundError(str(self.criteria))
+        return wrap(el)
 
 
 class FastSpec:

@@ -30,7 +30,7 @@ from pywinauto.timings import TimeoutError as PwTimeoutError
 
 from ..config import Config
 from ..exceptions import ApplicationException
-from .fastspec import FastSpec, copii_cu_nume, wrap
+from .fastspec import FastSpec, FereastraProces, copii_cu_nume, wrap
 from .images import Imagini, Names, Region
 
 log = logging.getLogger("tematica.pentana")
@@ -165,19 +165,18 @@ class PentanaApp:
         assert self.app is not None, "Aplicația nu este pornită (start()/attach())"
         # același obiect la fiecare apel: FastSpec își memorează fereastra găsită
         if getattr(self, "_main_spec", None) is None or self._main_app is not self.app:
-            self._main_spec, self._main_app = FastSpec(self.app.window(auto_id=self.main_id)), self.app
+            self._main_spec = FastSpec(FereastraProces(self.app.process, auto_id=self.main_id))
+            self._main_app = self.app
         return self._main_spec
 
-    def _resolve(self, timeout: Optional[float] = None, **criteria):
-        """Găsește o fereastră/un panou după criterii (auto_id=..., title=...), căutând pe rând:
-        fereastră de nivel superior a procesului, fereastră pe desktop aparținând procesului (pop-up-uri),
-        copil al ferestrei principale (ecranele Pentana sunt panouri în MKInsightMainUI)."""
+    def _resolve(self, timeout: Optional[float] = None, diagnostic: bool = True, **criteria):
+        """Găsește o fereastră/un panou după criterii (auto_id=..., title=...), căutând pe rând: fereastră de nivel
+        superior a procesului (editoare, pop-up-uri), descendent al ferestrei principale (ecranele Pentana sunt
+        panouri în MKInsightMainUI). diagnostic=False: la lipsă nu se listează ferestrele (verificări scurte)."""
         assert self.app is not None
         # FastSpec: tot ce se înlănțuie din fereastra găsită (child_window, path) folosește căutarea rapidă
-        candidates = [
-            FastSpec(self.app.window(**criteria)),
-            FastSpec(Desktop(backend="uia").window(process=self.app.process, **criteria)),
-        ]
+        # ferestrele de nivel superior ale procesului (editoare, pop-up-uri): un singur apel UIA
+        candidates = [FastSpec(FereastraProces(self.app.process, **criteria))]
         if criteria.get("auto_id") != self.main_id:
             # ecranele și listele derulante sunt copii apropiați ai ferestrei principale
             candidates.append(self.main.child_window(**criteria))
@@ -187,25 +186,36 @@ class PentanaApp:
         if key in self._unde_gasit:
             order.remove(self._unde_gasit[key])
             order.insert(0, self._unde_gasit[key])
-        deadline = time.monotonic() + (timeout or self.timeout)
+        timeout = self.timeout if timeout is None else timeout
+        if timeout < 1 and key in self._unde_gasit:
+            order = order[:1]  # verificare scurtă ("mai e deschisă?"): doar locul în care a apărut mereu
+        deadline = time.monotonic() + timeout
         while True:
             for i in order:
-                if self.exists(candidates[i], timeout=0.5):
+                if self.exists(candidates[i], timeout=0):  # o singură încercare pe loc, pe tură
                     if self._unde_gasit.get(key) != i:
                         log.debug("Fereastra %s găsită ca %s", criteria,
-                                  ("fereastră a procesului", "fereastră pe desktop",
-                                   "descendent al ferestrei principale")[i])
+                                  ("fereastră a procesului", "descendent al ferestrei principale")[i])
                         self._unde_gasit[key] = i
                     return candidates[i]
             if time.monotonic() >= deadline:
                 raise ApplicationException(
-                    f"Nu am găsit fereastra {criteria} în {timeout or self.timeout}s. Ferestre deschise:\n"
-                    + self.dump_windows()
+                    f"Nu am găsit fereastra {criteria} în {timeout}s"
+                    + ((". Ferestre deschise:\n" + self.dump_windows()) if diagnostic else "")
                 )
+            time.sleep(0.1)
 
     def window(self, auto_id: str, timeout: Optional[float] = None):
         """O fereastră a aplicației după auto_id (editoare, DropDownComponentWindow, ConfigurationScreen...)."""
         return self._resolve(timeout, auto_id=auto_id)
+
+    def fereastra_deschisa(self, auto_id: str, timeout: float = 0.3) -> bool:
+        """Verificare rapidă, fără diagnostic la lipsă (ex. "s-a închis lista derulantă?")."""
+        try:
+            self._resolve(timeout, diagnostic=False, auto_id=auto_id)
+            return True
+        except ApplicationException:
+            return False
 
     screen = window  # alias istoric
 

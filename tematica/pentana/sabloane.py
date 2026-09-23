@@ -195,11 +195,8 @@ class IntroducereRiscuri:
             raise ApplicationException("Lista derulantă nu s-a închis nici după clicul în afara ei")
 
     def _lista_deschisa(self) -> bool:
-        try:
-            self.app.window("DropDownComponentWindow", timeout=1)
-            return True
-        except ApplicationException:
-            return False
+        """Lista derulantă e încă deschisă (verificare scurtă: se folosește după ce am închis-o)."""
+        return self.app.fereastra_deschisa("DropDownComponentWindow")
 
     def _verifica_popup_formular(self, form) -> None:
         """După 'Finalizare', Pentana poate afișa un mesaj de validare (InfoPopup) în loc să creeze șablonul."""
@@ -251,9 +248,7 @@ class IntroducereRiscuri:
         app.select_tree_path(app.wait(tree), cale)
         keyboard.send_keys("{ENTER}")
         app.pause()
-        try:
-            app.window("DropDownComponentWindow", timeout=1)
-        except ApplicationException:
+        if not app.fereastra_deschisa("DropDownComponentWindow"):
             return  # lista s-a închis după Enter
         log.info("Lista de procese a rămas deschisă după Enter; o închid cu ESC")
         keyboard.send_keys("{ESC}")
@@ -335,9 +330,9 @@ class IntroducereRiscuri:
         app = self.app
         answers = app.path(details, "c_Answers", "tb_Main")
         app.click_image("liste_raspunsuri", within=editor, fallback=answers.child_window(auto_id="btn_AnswerLists"))
-        try:
-            menu = app.window("m_AnswerLists", timeout=1)
-        except ApplicationException:
+        if app.fereastra_deschisa("m_AnswerLists", timeout=0.5):
+            menu = app.window("m_AnswerLists")
+        else:
             # rândurile listei de răspunsuri sunt desenate de control și nu apar în UIA, deci nu le putem număra
             log.info("Meniul listelor de răspunsuri nu a apărut: lista a fost aplicată direct de buton")
             return
@@ -729,6 +724,8 @@ class IntroducereRiscuri:
 
     def _calendar_deschis(self, timeout: float = 2) -> bool:
         """timeout = cât așteptăm să apară; după confirmare folosim o verificare scurtă (calendarul e deja închis)."""
+        if not self.app.fereastra_deschisa("DropDownComponentWindow", timeout=timeout):
+            return False
         try:
             return self.app.exists(self._calendar(timeout), timeout=timeout)
         except ApplicationException:
