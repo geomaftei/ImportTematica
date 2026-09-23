@@ -312,6 +312,24 @@ class PentanaApp:
         self.pause()
         return ctl
 
+    def seteaza_text(self, spec, text: str):
+        """Pune textul direct în câmp (UIA ValuePattern), fără tastatură - nu mută focusul și nu închide listele
+        derulante; verifică valoarea și, dacă nu s-a scris, revine la clic + Ctrl+A + lipire din clipboard."""
+        ctl = self.wait(spec)
+        try:
+            ctl.iface_value.SetValue(text)
+            self.pause(0.5)
+            if _normalizeaza(ctl.iface_value.CurrentValue) == _normalizeaza(text):
+                return ctl
+            log.debug("SetValue nu a scris textul complet în %s; lipesc din clipboard", describe(spec))
+        except Exception as exc:  # noqa: BLE001 - câmpul nu expune ValuePattern
+            log.debug("SetValue indisponibil pentru %s: %s", describe(spec), exc)
+        ctl.click_input()
+        pyperclip.copy(text)
+        keyboard.send_keys("^a^v")
+        self.pause()
+        return ctl
+
     def paste_into(self, spec, text: str, select_all: bool = False):
         """SetToClipboard + Ctrl+V (robotul lipea din clipboard ca să păstreze diacriticele)."""
         pyperclip.copy(text)

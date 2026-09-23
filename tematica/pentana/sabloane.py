@@ -313,10 +313,9 @@ class IntroducereRiscuri:
         mergem mai departe."""
         app = self.app
         answers = app.path(details, "c_Answers", "tb_Main")
-        app.hover(answers.child_window(auto_id="btn_AnswerLists"))
         app.click_image("liste_raspunsuri", within=editor, fallback=answers.child_window(auto_id="btn_AnswerLists"))
         try:
-            menu = app.window("m_AnswerLists", timeout=3)
+            menu = app.window("m_AnswerLists", timeout=1)
         except ApplicationException:
             # rândurile listei de răspunsuri sunt desenate de control și nu apar în UIA, deci nu le putem număra
             log.info("Meniul listelor de răspunsuri nu a apărut: lista a fost aplicată direct de buton")
@@ -333,31 +332,52 @@ class IntroducereRiscuri:
 
     # --- legătura risc/control -------------------------------------------
     def leaga_risc_control(self, risc: pd.Series, control: pd.Series) -> None:
-        """"Pregatim adaugarea Testului": filtrare după risc + control, apoi legătura din celula matricei."""
+        """"Pregatim adaugarea Testului": filtrare după riscul și controlul tocmai create, apoi legătura din celula
+        rămasă în matrice. Celula poate fi deja legată (are teste) - atunci nu mai creăm legătura."""
         app = self.app
         log.info("Pregatim adaugarea testului %s", risc[COL_DESCRIERE_RISC])
-        app.click_image(("filtre_risc_control", "filtre_risc_control_activ"), within=app.main, timeout=6,
-                        fallback=app.path(self.rc_matrix, "tb_Links", "btn_RCFilters"))
-        flt = app.path(app.dropdown(), "pnl_Content", "RCTemplateFilterControl", "tbl_Layout")
-        app.paste_into(flt.child_window(auto_id="txt_RiskFilter"), normalizeaza_spatii(risc[COL_DESCRIERE_RISC]),
-                       select_all=True)
-        keyboard.send_keys("{TAB}")
-        app.paste_into(flt.child_window(auto_id="txt_ControlFilter"),
-                       normalizeaza_spatii(control[COL_DENUMIRE_CONTROL]), select_all=True)
-        app.click_image("aplicare_filtre", within=app.dropdown(), fallback=flt.child_window(auto_id="btn_Apply"))
+        self._aplica_filtre(normalizeaza_spatii(risc[COL_DESCRIERE_RISC]),
+                            normalizeaza_spatii(control[COL_DENUMIRE_CONTROL]))
 
         # după filtrare rămâne o singură celulă risc x control ("in patratel")
         app.pause(2)  # matricea se redesenează după filtrare
         self._click_celula()
-        # "Creare legătură de risc/control pentru selecție": butonul din bara tb_Links, activ doar cu celula selectată
-        # (robotul folosea imaginea elementului de meniu); meniul contextual al celulei rămâne rezervă
+        # "Creare legătură de risc/control pentru selecție": butonul din bara tb_Links, activ doar cu o celulă
+        # nelegată selectată; pentru o celulă deja legată se activează "Eliminare legătură" / "Editare teste"
         btn = app.path(self.rc_matrix, "tb_Links", "btn_CreateRiskControlLink")
         if self._activ(btn):
             app.click(btn)
-        else:
-            log.warning("Butonul 'Creare legătură' nu s-a activat după clicul pe celulă; încerc meniul contextual")
-            self._meniu_matrice("Creare legătură de risc/control pentru selecție")
+            log.info("Legătura risc/control a fost creată")
+            return
+        if self._activ(app.path(self.rc_matrix, "tb_Links", "btn_RemoveRiskControlLink"), timeout=1):
+            log.info("Riscul și controlul sunt deja legate (celula are teste); trec la teste")
+            return
+        log.warning("Butonul 'Creare legătură' nu s-a activat după clicul pe celulă; încerc meniul contextual")
+        self._meniu_matrice("Creare legătură de risc/control pentru selecție")
         log.info("Legătura risc/control a fost creată")
+
+    def _aplica_filtre(self, risc: str, control: str) -> None:
+        """"Filtre risc/control": riscul și controlul scrise direct în câmpuri (fără TAB, care putea închide lista),
+        apoi "Aplicare filtre". Dacă lista se închide pe parcurs, o redeschidem și reluăm."""
+        app = self.app
+        btn_filtre = app.path(self.rc_matrix, "tb_Links", "btn_RCFilters")
+        for incercare in range(1, 4):
+            try:
+                app.click_image(("filtre_risc_control", "filtre_risc_control_activ"), within=app.main, timeout=6,
+                                fallback=btn_filtre)
+                dd = app.window("DropDownComponentWindow", timeout=5)
+                flt = app.path(dd, "pnl_Content", "RCTemplateFilterControl", "tbl_Layout")
+                app.seteaza_text(flt.child_window(auto_id="txt_RiskFilter"), risc)
+                app.seteaza_text(flt.child_window(auto_id="txt_ControlFilter"), control)
+                app.click_image("aplicare_filtre", within=dd, fallback=flt.child_window(auto_id="btn_Apply"))
+                log.info("Filtre aplicate: risc '%s', control '%s'", risc[:60], control[:60])
+                return
+            except ApplicationException as exc:
+                log.warning("Filtrele risc/control nu s-au putut completa (încercarea %d din 3): %s", incercare, exc)
+                if self._lista_deschisa():
+                    keyboard.send_keys("{ESC}")  # închidem lista pe jumătate completată și o luăm de la capăt
+                app.pause(2)
+        raise ApplicationException("Nu am reușit să aplic filtrele risc/control după 3 încercări")
 
     def _celula_matrice(self):
         return self.app.path(self.rc_matrix, "pnl_Outer", ("c_Matrix", 0))
