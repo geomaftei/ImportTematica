@@ -142,32 +142,40 @@ class IntroducereRiscuri:
         entitate = self.cfg["pentana.entity_link"]
         app.click(details.child_window(auto_id="lst_EntityLinks"))
         app.bifeaza_element(app.path(app.dropdown(), "pnl_Content", "AuditableEntityPickerControl"), entitate)
-        self._inchide_lista(form)
+        self._inchide_lista(form.child_window(auto_id="lbl_PageTitle"))
         log.info("Entitate asociată: %s", entitate)
 
         # "Tipuri audit conexate" -> bifăm tipul din config (Asigurare)
         tip = self.cfg["pentana.audit_type"]
         app.click(details.child_window(auto_id="lst_AuditType"))
         app.bifeaza_element(app.path(app.dropdown(), "pnl_Content", "MultiLevelListTreeControl", "tv_Items"), tip)
-        self._inchide_lista(form)
+        self._inchide_lista(form.child_window(auto_id="lbl_PageTitle"))
         log.info("Tip audit conexat: %s", tip)
         app.click(app.path(form, "pnl_Buttons", "btn_Next"))  # "Finalizare"
         self._verifica_popup_formular(form)
         app.wait(self.editor)
         log.info("Șablonul '%s' a fost creat", nume)
 
-    def _inchide_lista(self, form) -> None:
-        """Închide lista derulantă confirmând (Enter, ca robotul); dacă a rămas deschisă, un clic pe titlul
-        formularului. ESC ar anula alegerea."""
+    def _inchide_lista(self, neutru) -> None:
+        """Închide lista derulantă confirmând (Enter, ca robotul); dacă a rămas deschisă, un clic pe un element
+        neutru din fereastră (o etichetă). ESC ar anula alegerea, iar un al doilea Enter, după ce lista s-a închis,
+        ar apăsa butonul implicit (OK) al editorului."""
         app = self.app
         keyboard.send_keys("{ENTER}")
         app.pause()
+        if not self._lista_deschisa():
+            return
+        log.info("Lista a rămas deschisă după Enter; o închid cu un clic lângă ea")
+        app.click(neutru)
+        if self._lista_deschisa():
+            raise ApplicationException("Lista derulantă nu s-a închis nici după clicul în afara ei")
+
+    def _lista_deschisa(self) -> bool:
         try:
-            app.window("DropDownComponentWindow", timeout=1)
+            self.app.window("DropDownComponentWindow", timeout=1)
+            return True
         except ApplicationException:
-            return  # lista s-a închis
-        log.info("Lista a rămas deschisă; o închid cu un clic pe titlul formularului")
-        app.click(form.child_window(auto_id="lbl_PageTitle"))
+            return False
 
     def _verifica_popup_formular(self, form) -> None:
         """După 'Finalizare', Pentana poate afișa un mesaj de validare (InfoPopup) în loc să creeze șablonul."""
@@ -267,8 +275,10 @@ class IntroducereRiscuri:
 
         # [img] "< Fără >" (Tip Control) -> Down + Enter: robotul lua primul element din listă
         app.click_image("camp_fara", within=editor, fallback=details.child_window(auto_id="lst_ControlType"))
-        keyboard.send_keys("{DOWN}{ENTER}")
+        keyboard.send_keys("{DOWN}")
         app.pause()
+        self._inchide_lista(details.child_window(auto_id="lbl_Description"))  # eticheta "Denumire Control:"
+        log.info("Tip control ales (primul element după '< Fără >')")
 
         # [img] "Liste răspunsuri" -> meniul m_AnswerLists -> "Functionalitatea de control"
         self._alege_lista_raspunsuri(editor, details,
@@ -298,7 +308,7 @@ class IntroducereRiscuri:
         app = self.app
         answers = app.path(details, "c_Answers", "tb_Main")
         app.hover(answers.child_window(auto_id="btn_AnswerLists"))
-        app.click_image("liste_raspunsuri", within=editor, fallback=answers)
+        app.click_image("liste_raspunsuri", within=editor, fallback=answers.child_window(auto_id="btn_AnswerLists"))
         menu = app.window("m_AnswerLists")
         item = menu.child_window(title_re="^" + nume_lista + ".*", control_type="MenuItem")
         if app.exists(item, timeout=3):
@@ -388,11 +398,15 @@ class IntroducereRiscuri:
                         fallback=_camp_lista(meta, "Tehnici de testare control:"))
         tehnici = str(test[COL_TEHNICI_TEST]).lower()
         log.info("Voi bifa tehnica de testare: %s", test[COL_TEHNICI_TEST])
+        lista = app.path(app.dropdown(), "pnl_Content", "DataListTreeControl", "tv_Items")
         for cuvant, element in TEHNICI_TESTARE.items():
             if cuvant in tehnici:
-                app.dropdown_toggle(element)
+                app.bifeaza_element(lista, element)
         keyboard.send_keys("{TAB}")  # închide lista, ca în robot
         app.pause()
+        if self._lista_deschisa():
+            log.info("Lista tehnicilor a rămas deschisă după TAB; o închid cu un clic pe etichetă")
+            app.click(meta.child_window(title="Tehnici de testare control:", class_name_re=r"WindowsForms10\.STATIC.*"))
 
         log.info("Scriu Detalii Tehnici de Testare: %s", test[COL_DETALII_TEHNICI])
         app.paste_into(_camp_text(meta, "^Detalii tehnici de testare.*"),
