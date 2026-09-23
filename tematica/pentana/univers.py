@@ -251,3 +251,13 @@ class IntroducereProceseInUnivers:
         else:
             self.app.click_image("trimite_modificari", within=self.config_screen)
         log.info("Modificările din Universul de procese au fost trimise")
+        # salvarea închide ecranul de configurare; până atunci aplicația ignoră clicurile din meniul din stânga
+        ecran = self.app.main.child_window(auto_id="ConfigurationScreen", depth=1)
+        deadline = time.monotonic() + 120
+        while self.app.exists(ecran, timeout=0) and time.monotonic() < deadline:
+            time.sleep(0.5)
+        if self.app.exists(ecran, timeout=0):
+            log.warning("Ecranul de configurare este încă deschis după 120 s de la trimiterea modificărilor")
+        else:
+            log.info("Ecranul de configurare s-a închis")
+        self.app.pause(3)

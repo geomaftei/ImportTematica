@@ -8,7 +8,6 @@ Erorile de business (BusinessRuleException) opresc procesarea fără retry; eror
 """
 from __future__ import annotations
 
-import contextlib
 import io
 import logging
 import shutil
@@ -152,13 +151,12 @@ class Framework:
         log.info("Ferestre Pentana deschise în momentul erorii:\n%s", ferestre)
 
         if self.app is not None:
-            # print_control_identifiers(filename=...) scrie în codificarea sistemului și cade la diacritice,
-            # așa că îi capturăm ieșirea și o scriem noi în UTF-8
+            from .pentana.fastspec import arbore_controale  # import leneș: --dry-run nu are nevoie de pywinauto
+
             buf = io.StringIO()
             try:
                 depth = int(self.cfg.get("debug.tree_depth", 8))
-                with contextlib.redirect_stdout(buf):
-                    self.app.main.print_control_identifiers(depth=depth)
+                buf.write(arbore_controale(self.app.main.wrapper_object(), depth=depth))
             except Exception as e:  # noqa: BLE001
                 buf.write(f"\nNu am putut lista controalele complet: {e}")
             (folder / "controale.txt").write_text(buf.getvalue(), encoding="utf-8")

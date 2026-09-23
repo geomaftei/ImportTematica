@@ -121,6 +121,40 @@ def cauta(root, criteria: Dict[str, Any]):
     return None
 
 
+def arbore_controale(root, depth: int = 8) -> str:
+    """Arborele de controale (ca UI Explorer) pentru pachetul de diagnostic: auto_id, nume, tip, clasă. Conținutul
+    arborilor / listelor mari nu se listează (doar numărul de elemente), ca să rămână rapid și lizibil."""
+    u = IUIA()
+    cr = _cache_request()
+    linii: List[str] = []
+
+    def copii(el):
+        arr = el.FindAllBuildCache(u.tree_scope["children"], u.true_condition, cr)
+        return [arr.GetElement(i) for i in range(arr.Length)]
+
+    def viziteaza(el, nivel: int) -> None:
+        try:
+            lista = copii(el)
+        except Exception as exc:  # noqa: BLE001
+            linii.append("  " * nivel + f"(eroare: {exc})")
+            return
+        for c in lista:
+            tip = IUIA().known_control_type_ids.get(c.CachedControlType, str(c.CachedControlType))
+            ascuns = " [offscreen]" if c.CachedIsOffscreen else ""
+            linii.append("  " * nivel + f"{tip} auto_id={c.CachedAutomationId!r} name={c.CachedName!r} "
+                                        f"class={c.CachedClassName!r}{ascuns}")
+            if tip in NU_COBORI:
+                try:
+                    linii.append("  " * (nivel + 1) + f"... {len(copii(c))} elemente (neparcurse)")
+                except Exception:  # noqa: BLE001
+                    pass
+            elif nivel + 1 < depth:
+                viziteaza(c, nivel + 1)
+
+    viziteaza(_element(root), 0)
+    return "\n".join(linii)
+
+
 class FastSpec:
     """Selector leneș: se rezolvă abia la wait()/exists()/wrapper_object(), de fiecare dată din nou (elementele
     WinForms pot fi recreate). `parent` poate fi alt FastSpec, un WindowSpecification pywinauto sau un wrapper."""

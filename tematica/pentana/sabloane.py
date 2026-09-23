@@ -127,9 +127,7 @@ class IntroducereRiscuri:
     def creeaza_sablon(self) -> None:
         """Secvența "Crearea unei foi de lucru"."""
         app = self.app
-        tools = app.path(app.main, "pnl_SectionMenu", "c_SectionMenu", "pnl_ScrollArea", "pnl_Tools")
-        app.hover(tools.child_window(auto_id="btn_TemplateDesign"))
-        app.click(tools.child_window(auto_id="btn_TemplateDesign"), double=True)
+        self._deschide_creare_sabloane()
         app.click(self.designer.child_window(auto_id="btn_CreateTemplate"))
 
         form = app.window("CreateWPTemplateForm")
@@ -152,6 +150,24 @@ class IntroducereRiscuri:
         app.click(app.path(form, "pnl_Buttons", "btn_Next"))  # "Finalizare"
         app.wait(self.editor)
         log.info("Șablonul '%s' a fost creat", self.cfg["pentana.template_name"])
+
+    def _deschide_creare_sabloane(self) -> None:
+        """Hover + dublu-click pe "Creare Sabloane" din meniul din stânga, ca robotul. Dacă aplicația era ocupată
+        (de ex. imediat după "Trimitere modificări") clicul se pierde, așa că verificăm că secțiunea s-a deschis
+        (butonul "Creare șablon") și reîncercăm."""
+        app = self.app
+        tools = app.path(app.main, "pnl_SectionMenu", "c_SectionMenu", "pnl_ScrollArea", "pnl_Tools")
+        btn = tools.child_window(auto_id="btn_TemplateDesign")
+        creare = self.designer.child_window(auto_id="btn_CreateTemplate")
+        for incercare in range(1, 4):
+            app.hover(btn)
+            app.click(btn, double=True)
+            if app.exists(creare, timeout=15):
+                log.info("Secțiunea 'Creare Sabloane' este deschisă")
+                return
+            log.warning("Secțiunea 'Creare Sabloane' nu s-a deschis (încercarea %d din 3)", incercare)
+        raise ApplicationException("Secțiunea 'Creare Sabloane' nu s-a deschis după 3 dublu-clicuri. "
+                                   "Ferestre deschise:\n" + app.dump_windows())
 
     # --- arborele de procese ---------------------------------------------
     def selecteaza_in_arbore(self, nume: str) -> None:
