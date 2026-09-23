@@ -141,17 +141,24 @@ class IntroducereProceseInUnivers:
             self._deschide_meniul_add_item()
             self.app.click_menu_item(MENIU_ACELASI_NIVEL)
         else:
+            log.info("Selectez părintele în arbore: %s", " > ".join(cale_parinte))
             self.app.select_tree_path(self.tree, cale_parinte)
+            log.info("Deschid meniul 'Add item'")
             self._deschide_meniul_add_item()
+            log.info("Aleg '%s'", MENIU_SUB_OBIECT)
             self.app.click_menu_item(MENIU_SUB_OBIECT)
         self.app.pause(2)
 
         # "Scrierea Numelui": Ctrl+A pe numele implicit, apoi lipire din clipboard
+        log.info("Scriu numele în txt_Name")
         self.app.paste_into(self._camp_detalii("txt_Name"), nume, select_all=True)
 
         # "Selectarea tipului": Alt+Down pe lst_Type deschide lista MultiLevelListTreeControl
+        log.info("Deschid lista de tipuri (lst_Type)")
         self.app.hotkey(self._camp_detalii("lst_Type"), "%{DOWN}")
+        log.info("Aleg tipul '%s'", tip)
         self.app.dropdown_select(tip, tree_auto_id="MultiLevelListTreeControl")
+        log.info("%s '%s' adăugat(ă)", tip, nume)
 
     def _selecteaza_nod_prim_nivel(self) -> None:
         top = [it for it in self.tree.children() if it.element_info.control_type == "TreeItem"]

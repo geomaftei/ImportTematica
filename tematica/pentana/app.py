@@ -388,10 +388,13 @@ class PentanaApp:
         for nume in cale:
             try:
                 if nod.element_info.control_type == "TreeItem" and not nod.is_expanded():
+                    log.debug("Expandez nodul '%s'", nod.window_text())
                     nod.expand()
             except Exception:  # noqa: BLE001
                 pass
+            log.debug("Citesc copiii nodului '%s' ca să găsesc '%s'", nod.window_text() or "rădăcină", nume)
             copii = [c for c in nod.children() if c.element_info.control_type == "TreeItem"]
+            log.debug("%d copii citiți", len(copii))
             urmator = next((c for c in copii if _match(nume, c.window_text())), None)
             if urmator is None:
                 raise ApplicationException(
