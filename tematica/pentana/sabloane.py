@@ -565,17 +565,17 @@ class IntroducereRiscuri:
         lst = app.wait(utilizatori)
         r = lst.rectangle()
         s = _scalare(lst)
-        extinde = app.path(dd, "pnl_Content", "UserSelectionControl", "tb_Main", "btn_ExpandAll")
-        if app.exists(extinde, timeout=1):
-            app.click(extinde)  # grupurile de utilizatori pot fi strânse
         bara = utilizatori.child_window(control_type="ScrollBar")
         dreapta = bara.rectangle().left if app.exists(bara, timeout=1) else r.right
         # măsurat la 125%: căsuța are centrul la 17 px de marginea listei, textul începe la 30 px
         x_bifa = r.left + int(round(14 * s))
         zona_text = (r.left + int(round(22 * s)), r.top, dreapta, r.bottom)
+        # primul clic în listă doar o activează (fără bifă): îl dăm pe "Line up" al barei de derulare - lista e deja
+        # sus, deci nu se mișcă. Nu folosim set_focus(): aduce fereastra în față și lista derulantă se închide.
         try:
-            lst.set_focus()  # altfel primul clic doar activează lista și nu pune bifa
-        except Exception:  # noqa: BLE001
+            app.wait(bara.child_window(title="Line up", control_type="Button"), timeout=1).click_input()
+            time.sleep(0.3)
+        except Exception:  # noqa: BLE001 - listă fără bară de derulare
             pass
 
         def pagina():
