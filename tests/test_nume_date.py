@@ -6,7 +6,7 @@ import pytest
 from tematica.nume_date import imparte_auditori, parseaza_data, potriveste_nume
 
 LISTA = ["Popescu Ion", "Popescu Ioana", "Ionescu Ana-Maria", "Mărgineanu Ștefan Alexandru", "Dumitru Andrei",
-         "Maftei George"]
+         "Maftei George", "Cristian-lon Cimpoesu"]
 
 
 @pytest.mark.parametrize("din_excel, asteptat", [
@@ -18,6 +18,7 @@ LISTA = ["Popescu Ion", "Popescu Ioana", "Ionescu Ana-Maria", "Mărgineanu Ștef
     ("Margineanu S.", "Mărgineanu Ștefan Alexandru"),      # inițială
     ("Dumitru Andreii", "Dumitru Andrei"),        # greșeală de tastare
     ("George Maftei", "Maftei George"),
+    ("Cristian-Ion Cimpoesu", "Cristian-lon Cimpoesu"),   # nume citit prin OCR (I citit ca l)
 ])
 def test_potrivire_gasita(din_excel, asteptat):
     assert potriveste_nume(din_excel, LISTA).gasit == asteptat

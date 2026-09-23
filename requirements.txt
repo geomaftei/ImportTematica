@@ -9,3 +9,11 @@ PyYAML>=6.0
 python-dotenv>=1.0
 keyring>=24.0
 pytest>=7.0
+# OCR-ul din Windows 10/11 (listele pe care Pentana le desenează fără elemente UIA, ex. utilizatorii din ResponsabilTest)
+winrt-runtime
+winrt-Windows.Foundation
+winrt-Windows.Foundation.Collections
+winrt-Windows.Globalization
+winrt-Windows.Graphics.Imaging
+winrt-Windows.Media.Ocr
+winrt-Windows.Storage.Streams

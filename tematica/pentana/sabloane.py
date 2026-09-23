@@ -28,6 +28,7 @@ from typing import Dict, List
 
 import pandas as pd
 import pyautogui
+from PIL import ImageGrab
 from pywinauto import keyboard
 
 from ..config import Config
@@ -36,9 +37,10 @@ from ..matrice import (
     COL_CADRU_CONTROL, COL_DENUMIRE_CONTROL, COL_DENUMIRE_TEST, COL_DESCRIERE_CONTROL, COL_DESCRIERE_RISC,
     COL_AUDITOR, COL_COD_APR, COL_DETALII_TEHNICI, COL_TERMEN, COL_FRECVENTA_CONTROL, COL_TEHNICI_TEST, COL_TIP_RISC, Matrice, normalizeaza_spatii,
 )
-from ..nume_date import imparte_auditori, parseaza_data, potriveste_nume
+from ..nume_date import cuvinte as cuvinte_nume, imparte_auditori, parseaza_data, potriveste_nume
 from .app import PentanaApp
 from .fastspec import arbore_controale
+from .ocr import citeste_ecran
 
 log = logging.getLogger("tematica.pentana.sabloane")
 
@@ -518,6 +520,12 @@ class IntroducereRiscuri:
             return
         app.click(_camp_nu_eticheta(meta, r"^Responsabil.*"))
         dd = app.window("DropDownComponentWindow", timeout=5)
+        utilizatori = app.path(dd, "pnl_Content", "UserSelectionControl", "lst_Users")
+        if app.exists(utilizatori, timeout=2):
+            # lista de utilizatori e desenată de Pentana (rândurile nu apar în UIA): o citim prin OCR
+            self._bifeaza_auditori_ocr(dd, utilizatori, auditori, eticheta_test)
+            self._inchide_lista_bife(meta, r"^Responsabil.*")
+            return
         lista = None
         for control in ("DataListTreeControl", "MultiLevelListTreeControl"):
             spec = app.path(dd, "pnl_Content", control, "tv_Items")
@@ -547,6 +555,94 @@ class IntroducereRiscuri:
                 log.info("Auditorul '%s' bifat ca '%s'", auditor, p.gasit)
             app.bifeaza_element(lista, p.gasit)
         self._inchide_lista_bife(meta, r"^Responsabil.*")
+
+    def _bifeaza_auditori_ocr(self, dd, utilizatori, auditori: List[str], eticheta_test: str) -> None:
+        """Lista "Utilizatori audit" (UserSelectionControl / lst_Users): căsuță + nume pe fiecare rând, desenate de
+        control. (1) derulăm lista de sus până jos și citim toate numele prin OCR; (2) potrivim fiecare auditor din
+        Excel cu lista completă (ca să prindem și ambiguitățile); (3) derulăm din nou și dăm clic pe căsuța fiecărui
+        auditor găsit, verificând pe ecran că s-a bifat."""
+        app = self.app
+        lst = app.wait(utilizatori)
+        r = lst.rectangle()
+        s = _scalare(lst)
+        extinde = app.path(dd, "pnl_Content", "UserSelectionControl", "tb_Main", "btn_ExpandAll")
+        if app.exists(extinde, timeout=1):
+            app.click(extinde)  # grupurile de utilizatori pot fi strânse
+        bara = utilizatori.child_window(control_type="ScrollBar")
+        dreapta = bara.rectangle().left if app.exists(bara, timeout=1) else r.right
+        # măsurat la 125%: căsuța are centrul la 17 px de marginea listei, textul începe la 30 px
+        x_bifa = r.left + int(round(14 * s))
+        zona_text = (r.left + int(round(22 * s)), r.top, dreapta, r.bottom)
+        centru = ((r.left + r.right) // 2, (r.top + r.bottom) // 2)
+
+        def pagina():
+            return [rand for rand in citeste_ecran(zona_text) if len(cuvinte_nume(rand.text)) >= 2]
+
+        def sus():
+            pyautogui.scroll(120 * 50, x=centru[0], y=centru[1])
+            time.sleep(0.5)
+
+        def jos():
+            buton = bara.child_window(title="Page down", control_type="Button")
+            try:
+                app.wait(buton, timeout=1).click_input()
+            except Exception:  # noqa: BLE001 - bara nu e expusă sau am ajuns jos
+                pyautogui.scroll(-120 * 5, x=centru[0], y=centru[1])
+            time.sleep(0.5)
+
+        def paginile():
+            """Paginile listei, de sus în jos, până când derularea nu mai aduce nume noi."""
+            sus()
+            anterioare = None
+            for _ in range(60):
+                randuri = pagina()
+                texte = [rand.text for rand in randuri]
+                if texte == anterioare:
+                    return
+                yield randuri
+                anterioare = texte
+                jos()
+
+        # (1) + (2)
+        vazute: List[str] = []
+        for randuri in paginile():
+            vazute += [rand.text for rand in randuri if rand.text not in vazute]
+        log.info("Lista de utilizatori citită prin OCR: %d nume", len(vazute))
+        log.debug("Utilizatori: %s", vazute)
+        tinte = {}
+        for auditor in auditori:
+            p = potriveste_nume(auditor, vazute)
+            if p.gasit is None:
+                problema = f"Testul {eticheta_test}: auditorul '{auditor}' - {p.motiv}"
+                log.warning("Nu am bifat: %s", problema)
+                self.probleme_auditori.append(problema)
+            else:
+                if p.partiala:
+                    log.warning("Auditorul '%s' potrivit cu '%s' (potrivire parțială, scor %.2f) - de verificat",
+                                auditor, p.gasit, p.scor)
+                tinte[p.gasit] = auditor
+        if not tinte:
+            return
+
+        # (3)
+        bifate = set()
+        for randuri in paginile():
+            for rand in randuri:
+                if rand.text in tinte and rand.text not in bifate:
+                    y = rand.centru_y
+                    if not _bifat(x_bifa, y):
+                        pyautogui.click(x_bifa, y)
+                        time.sleep(0.4)
+                    if _bifat(x_bifa, y):
+                        log.info("Auditorul '%s' bifat ca '%s'", tinte[rand.text], rand.text)
+                        bifate.add(rand.text)
+            if len(bifate) == len(tinte):
+                break
+        for nume, auditor in tinte.items():
+            if nume not in bifate:
+                problema = f"Testul {eticheta_test}: auditorul '{auditor}' ('{nume}') - clicul nu a pus bifa"
+                log.warning("Nu am bifat: %s", problema)
+                self.probleme_auditori.append(problema)
 
     def _inchide_lista_bife(self, meta, eticheta_re: str) -> None:
         keyboard.send_keys("{TAB}")  # închide lista, ca în robot
@@ -610,6 +706,13 @@ class IntroducereRiscuri:
             problema = f"Testul {eticheta_test}: termenul {text} nu apare în câmp (valoare citită: '{valoare}')"
             log.warning("De verificat: %s", problema)
             self.probleme_termen.append(problema)
+
+
+def _bifat(x: int, y: int) -> bool:
+    """Căsuța de la (x, y) e bifată: interiorul ei nu mai e alb uniform (nebifată are luminozitatea ~243)."""
+    zona = ImageGrab.grab(bbox=(x - 3, y - 3, x + 4, y + 4), all_screens=True).convert("L")
+    pixeli = zona.tobytes()  # un octet pe pixel în modul "L"
+    return sum(pixeli) / len(pixeli) < 220
 
 
 def _valoare(w) -> str:

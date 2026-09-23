@@ -36,9 +36,19 @@ def imparte_auditori(text: str) -> List[str]:
     return [" ".join(p.split()) for p in parti if p and p.strip()]
 
 
+_OCR = str.maketrans({"l": "i", "1": "i", "|": "i", "0": "o"})
+
+
+def _canonic_ocr(cuvant: str) -> str:
+    """Forma în care confuziile tipice de OCR dispar: I/l/1, O/0, rn/m ('Cristian-lon' ~ 'Cristian-Ion')."""
+    return cuvant.replace("rn", "m").translate(_OCR)
+
+
 def _scor_cuvant(a: str, b: str) -> float:
     if a == b:
         return 1.0
+    if _canonic_ocr(a) == _canonic_ocr(b):
+        return 0.95
     # inițială sau prescurtare: "a" / "a." ~ "ana", "alex" ~ "alexandru"
     if len(a) <= 2 and b.startswith(a) or len(b) <= 2 and a.startswith(b):
         return 0.9
