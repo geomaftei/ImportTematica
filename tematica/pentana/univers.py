@@ -47,6 +47,7 @@ class IntroducereProceseInUnivers:
         self.cfg = cfg
         self.matrice = matrice
         self.prefix = str(cfg.get("pentana.process_name_prefix", "") or "")
+        self.noduri_adaugate = 0
         self._config_screen = None
         self._tree = None      # wrapper memorat pentru tv_Universe
         self._btn_new = None   # wrapper memorat pentru btn_New
@@ -169,6 +170,7 @@ class IntroducereProceseInUnivers:
         log.info("Aleg tipul '%s'", tip)
         self.app.dropdown_select(tip, tree_auto_id="MultiLevelListTreeControl")
         log.info("%s '%s' adăugat(ă)", tip, nume)
+        self.noduri_adaugate += 1
 
     def _selecteaza_nod_prim_nivel(self) -> None:
         top = [it for it in self.tree.children() if it.element_info.control_type == "TreeItem"]

@@ -24,6 +24,7 @@ class SalvareCopieSiguranta:
     def __init__(self, app: PentanaApp, cfg: Config):
         self.app = app
         self.cfg = cfg
+        self.copie_confirmata = False
 
     def ruleaza(self) -> None:
         app = self.app
@@ -85,6 +86,7 @@ class SalvareCopieSiguranta:
         else:
             app.click_image("confirmare_copie_securizata", within=dd, timeout=5)
         log.info("Copia de siguranță securizată a șablonului '%s' a fost confirmată", nume)
+        self.copie_confirmata = True
 
     def _activ(self, spec) -> bool:
         try:

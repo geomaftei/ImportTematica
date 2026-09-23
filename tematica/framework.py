@@ -34,10 +34,16 @@ class Framework:
         self.dry_run = dry_run
         self.attach = attach
         self.app = None  # PentanaApp
+        # pașii rulați (pentru rezumatul de la final)
+        self.matrice: Optional[Matrice] = None
+        self.univers = None
+        self.riscuri = None
+        self.salvare = None
 
     # ------------------------------------------------------------ Process
     def proceseaza(self, fisier: Path) -> None:
         matrice = citeste_matrice(fisier, self.cfg.get("paths.sheet", "Sheet1"))
+        self.matrice = matrice
         log.info("Matrice: %d procese, %d arii, %d riscuri, %d controale, %d teste",
                  len(matrice.procese), len(matrice.arii), len(matrice.riscuri), len(matrice.controale),
                  len(matrice.teste))
@@ -52,11 +58,14 @@ class Framework:
         self.app.attach() if self.attach else self.app.start()
 
         if "univers" in self.pasi:
-            IntroducereProceseInUnivers(self.app, self.cfg, matrice).ruleaza()
+            self.univers = IntroducereProceseInUnivers(self.app, self.cfg, matrice)
+            self.univers.ruleaza()
         if "riscuri" in self.pasi:
-            IntroducereRiscuri(self.app, self.cfg, matrice).ruleaza()
+            self.riscuri = IntroducereRiscuri(self.app, self.cfg, matrice)
+            self.riscuri.ruleaza()
         if "salvare" in self.pasi:
-            SalvareCopieSiguranta(self.app, self.cfg).ruleaza()
+            self.salvare = SalvareCopieSiguranta(self.app, self.cfg)
+            self.salvare.ruleaza()
 
     @staticmethod
     def _afiseaza(m: Matrice) -> None:
@@ -100,6 +109,8 @@ class Framework:
         max_retries = int(self.cfg.get("framework.max_retries", 0))
         incercare = 0
         rezultat = 1
+        inceput = datetime.now()
+        eroare: Optional[str] = None
         while True:
             start = datetime.now()
             try:
@@ -109,9 +120,12 @@ class Framework:
                 break
             except BusinessRuleException as exc:
                 log.error("Business rule exception: %s", exc)
+                eroare = str(exc)
                 break
             except Exception as exc:  # noqa: BLE001 - System Exception
                 log.exception("System exception: %s", exc)
+                eroare = f"{type(exc).__name__}: {exc}"
+                self._pachet_diagnostic = True
                 self._raport_eroare(exc)
                 self._inchide_aplicatiile()
                 if incercare < max_retries:
@@ -120,9 +134,54 @@ class Framework:
                     continue
                 break
         log_context.transaction_number = 0
-        log.info("Process finished")
         self._inchide_aplicatiile()
+        self._rezumat_final(rezultat, eroare, datetime.now() - inceput)
         return rezultat
+
+    def _rezumat_final(self, rezultat: int, eroare: Optional[str], durata) -> None:
+        """Rezumatul rulării, ultimul lucru din log: stare, ce s-a introdus, ce trebuie verificat."""
+        probleme_aud = list(getattr(self.riscuri, "probleme_auditori", []))
+        probleme_termen = list(getattr(self.riscuri, "probleme_termen", []))
+        de_verificat = list(getattr(self.riscuri, "de_verificat", []))
+        if rezultat != 0:
+            stare = "EȘUAT"
+        elif probleme_aud or probleme_termen or de_verificat:
+            stare = "FINALIZAT CU PROBLEME DE VERIFICAT"
+        else:
+            stare = "FINALIZAT CU SUCCES"
+
+        linii = [f"Stare: {stare}", f"Durată: {int(durata.total_seconds() // 60)} min {int(durata.total_seconds() % 60)} s",
+                 f"Pași: {', '.join(self.pasi)}" + ("  (verificare matrice, fără Pentana)" if self.dry_run else "")]
+        if eroare:
+            linii.append(f"Eroare: {eroare}")
+            if getattr(self, "_pachet_diagnostic", False):
+                linii.append(f"Pachetul de diagnostic: {self.cfg.path('paths.screenshots_dir')}")
+        if self.matrice is not None:
+            m = self.matrice
+            linii.append(f"Matrice: {len(m.procese)} procese, {len(m.arii)} arii, {len(m.riscuri)} riscuri, "
+                         f"{len(m.controale)} controale, {len(m.teste)} teste")
+        if self.univers is not None:
+            linii.append(f"Univers de procese: {self.univers.noduri_adaugate} procese/arii/sub-arii adăugate")
+        if self.riscuri is not None:
+            intr = self.riscuri.introduse
+            linii.append(f"Șablon '{self.cfg.get('pentana.template_name')}': " +
+                         ", ".join(f"{n} {ce}" for ce, n in intr.items()))
+            linii.append("Auditori alocați: " + (f"{len(probleme_aud)} NEBIFAȚI" if probleme_aud else "toți bifați (OK)"))
+            linii += [f"   - {p}" for p in probleme_aud]
+            linii.append("Termene finalizare: " +
+                         (f"{len(probleme_termen)} de verificat" if probleme_termen else "toate completate (OK)"))
+            linii += [f"   - {p}" for p in probleme_termen]
+            if de_verificat:
+                linii.append(f"Auditori potriviți parțial (bifați, dar verifică numele): {len(de_verificat)}")
+                linii += [f"   - {p}" for p in de_verificat]
+        if self.salvare is not None:
+            linii.append("Copie de siguranță securizată: " + ("confirmată" if self.salvare.copie_confirmata else "NU"))
+
+        text = "\n".join(["", "=" * 70, "  REZUMAT RULARE", "=" * 70] + [f"  {l}" for l in linii] + ["=" * 70])
+        if rezultat != 0 or probleme_aud or probleme_termen:
+            log.warning(text)
+        else:
+            log.info(text)
 
     def _raport_eroare(self, exc: BaseException) -> None:
         """Pachet de diagnostic la eroare: captură de ecran, raport text (eroare, traceback, ferestre deschise),

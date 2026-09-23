@@ -86,6 +86,8 @@ class IntroducereRiscuri:
         self.prefix = str(cfg.get("pentana.process_name_prefix", "") or "")
         self.probleme_auditori: List[str] = []
         self.probleme_termen: List[str] = []
+        self.de_verificat: List[str] = []   # potriviri parțiale de nume (bifate, dar de verificat de om)
+        self.introduse = {"riscuri": 0, "controale": 0, "teste": 0, "auditori bifați": 0, "termene completate": 0}
 
     # --- selectori -----------------------------------------------------
     @property
@@ -122,19 +124,6 @@ class IntroducereRiscuri:
                 for subarie in self.matrice.subarii_pentru(proces, arie):
                     self.selecteaza_in_arbore([nume_proces, arie, subarie])
                     self._proceseaza_nod(proces, arie, subarie)
-        self._rezumat()
-
-    def _rezumat(self) -> None:
-        if self.probleme_auditori:
-            log.warning("Auditori alocați - %d probleme (bifele de mai jos NU au fost puse):\n  %s",
-                        len(self.probleme_auditori), "\n  ".join(self.probleme_auditori))
-        else:
-            log.info("Auditori alocați: totul OK - toți auditorii din matrice au fost găsiți și bifați")
-        if self.probleme_termen:
-            log.warning("Termen finalizare test - %d probleme:\n  %s",
-                        len(self.probleme_termen), "\n  ".join(self.probleme_termen))
-        else:
-            log.info("Termen finalizare test: totul OK")
 
     def _proceseaza_nod(self, proces: str, arie: str, subarie: str) -> None:
         for _, risc in self.matrice.riscuri_pentru(proces, arie, subarie).iterrows():
@@ -280,6 +269,7 @@ class IntroducereRiscuri:
             log.warning("Tip risc necunoscut '%s' - aleg 'Selectare niciun element'", tip)
         app.dropdown_select(TIPURI_RISC.get(tip))
         app.click_ok(editor)
+        self.introduse["riscuri"] += 1
 
     # --- control ---------------------------------------------------------
     def adauga_control(self, control: pd.Series) -> None:
@@ -325,6 +315,7 @@ class IntroducereRiscuri:
         app.paste_into(_camp_text(meta, "^Cadrul de reglementare.*"),
                        normalizeaza_spatii(control[COL_CADRU_CONTROL]))
         app.click_ok(editor)
+        self.introduse["controale"] += 1
 
     def _alege_lista_raspunsuri(self, editor, details, nume_lista: str) -> None:
         """"Liste răspunsuri": robotul deschidea meniul m_AnswerLists și alegea lista. În Pentana clicul pe partea
@@ -502,6 +493,7 @@ class IntroducereRiscuri:
         else:
             log.info("Testul nu are Cod referinta APR; câmpul CodApr rămâne gol")
         app.click_ok(editor)
+        self.introduse["teste"] += 1
 
 
     # --- auditori alocați / termen --------------------------------------------
@@ -546,9 +538,11 @@ class IntroducereRiscuri:
             if p.partiala:
                 log.warning("Auditorul '%s' bifat ca '%s' (potrivire parțială, scor %.2f) - de verificat",
                             auditor, p.gasit, p.scor)
+                self.de_verificat.append(f"Testul {eticheta_test}: '{auditor}' bifat ca '{p.gasit}'")
             else:
                 log.info("Auditorul '%s' bifat ca '%s'", auditor, p.gasit)
             app.bifeaza_element(lista, p.gasit)
+            self.introduse["auditori bifați"] += 1
         self._inchide_lista_bife(meta, r"^Responsabil.*")
 
     def _bifeaza_auditori_ocr(self, dd, utilizatori, auditori: List[str], eticheta_test: str) -> None:
@@ -626,8 +620,10 @@ class IntroducereRiscuri:
                 if p.partiala:
                     log.warning("Auditorul '%s' potrivit cu '%s' (potrivire parțială, scor %.2f) - de verificat",
                                 auditor, p.gasit, p.scor)
+                    self.de_verificat.append(f"Testul {eticheta_test}: '{auditor}' bifat ca '{p.gasit}'")
                 if bifeaza(p.gasit, rand.centru_y):
                     log.info("Auditorul '%s' bifat ca '%s'", auditor, p.gasit)
+                    self.introduse["auditori bifați"] += 1
                 else:
                     problema = f"Testul {eticheta_test}: auditorul '{auditor}' ('{p.gasit}') - clicul nu a pus bifa"
                     log.warning("Nu am bifat: %s", problema)
@@ -671,6 +667,7 @@ class IntroducereRiscuri:
             app.pause()
             if _are_data(_valoare(w), data):
                 log.info("Termen completat direct: %s", _valoare(w))
+                self.introduse["termene completate"] += 1
                 return
         except Exception:  # noqa: BLE001 - câmpul nu expune ValuePattern
             pass
@@ -686,6 +683,7 @@ class IntroducereRiscuri:
             selectata, inchis = self._alege_in_calendar(data)
             if selectata == data and inchis:
                 log.info("Termen completat: %s", text)
+                self.introduse["termene completate"] += 1
             else:
                 citit = selectata.strftime("%d.%m.%Y") if selectata else "necunoscut"
                 problema = f"Testul {eticheta_test}: termenul {text} nu a fost pus (în calendar: {citit})"
@@ -711,6 +709,7 @@ class IntroducereRiscuri:
         valoare = _valoare(w)
         if _are_data(valoare, data):
             log.info("Termen completat: %s", valoare)
+            self.introduse["termene completate"] += 1
         else:
             problema = f"Testul {eticheta_test}: termenul {text} nu apare în câmp (valoare citită: '{valoare}')"
             log.warning("De verificat: %s", problema)
