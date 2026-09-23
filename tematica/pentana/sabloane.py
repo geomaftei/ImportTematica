@@ -243,8 +243,8 @@ class IntroducereRiscuri:
                         fallback=editor.child_window(auto_id="c_Tabs").child_window(title="Tip Risc",
                                                                                      control_type="TabItem"))
         meta = self._meta(editor)
-        app.click_image("camp_none", within=meta.child_window(title="Tip Risc:"),
-                        fallback=meta.child_window(title="Tip Risc:"))
+        app.click_image("camp_none", within=_camp_lista(meta, "Tip Risc:"),
+                        fallback=_camp_lista(meta, "Tip Risc:"))
         tip = risc[COL_TIP_RISC]
         if tip and tip not in TIPURI_RISC:
             log.warning("Tip risc necunoscut '%s' - aleg 'Selectare niciun element'", tip)
@@ -278,18 +278,18 @@ class IntroducereRiscuri:
                         fallback=editor.child_window(auto_id="c_Tabs").child_window(title="Detalii Control",
                                                                                      control_type="TabItem"))
         meta = self._meta(editor)
-        app.paste_into(meta.child_window(title_re="^Descriere Control.*"),
+        app.paste_into(_camp_text(meta, "^Descriere Control.*"),
                        normalizeaza_spatii(control[COL_DESCRIERE_CONTROL]))
 
         # [img] "< None >" (Frecventa Control:) -> lista de frecvențe
-        app.click_image("camp_none", within=meta.child_window(title="Frecventa Control:"),
-                        fallback=meta.child_window(title="Frecventa Control:"))
+        app.click_image("camp_none", within=_camp_lista(meta, "Frecventa Control:"),
+                        fallback=_camp_lista(meta, "Frecventa Control:"))
         frecventa = control[COL_FRECVENTA_CONTROL]
         if frecventa and frecventa not in FRECVENTE_CONTROL:
             log.info("%s - nu aleg niciun element", frecventa)
         app.dropdown_select(frecventa if frecventa in FRECVENTE_CONTROL else None)
 
-        app.paste_into(meta.child_window(title_re="^Cadrul de reglementare.*"),
+        app.paste_into(_camp_text(meta, "^Cadrul de reglementare.*"),
                        normalizeaza_spatii(control[COL_CADRU_CONTROL]))
         app.click_ok(editor)
 
@@ -380,8 +380,8 @@ class IntroducereRiscuri:
                         fallback=editor.child_window(auto_id="c_Tabs").child_window(title="Tehnici De Testare",
                                                                                      control_type="TabItem"))
         meta = self._meta(editor)
-        app.click_image("camp_none", within=meta.child_window(title="Tehnici de testare control:"),
-                        fallback=meta.child_window(title="Tehnici de testare control:"))
+        app.click_image("camp_none", within=_camp_lista(meta, "Tehnici de testare control:"),
+                        fallback=_camp_lista(meta, "Tehnici de testare control:"))
         tehnici = str(test[COL_TEHNICI_TEST]).lower()
         log.info("Voi bifa tehnica de testare: %s", test[COL_TEHNICI_TEST])
         for cuvant, element in TEHNICI_TESTARE.items():
@@ -391,7 +391,17 @@ class IntroducereRiscuri:
         app.pause()
 
         log.info("Scriu Detalii Tehnici de Testare: %s", test[COL_DETALII_TEHNICI])
-        app.paste_into(meta.child_window(title_re="^Detalii tehnici de testare.*"),
+        app.paste_into(_camp_text(meta, "^Detalii tehnici de testare.*"),
                        normalizeaza_spatii(test[COL_DETALII_TEHNICI]))
         app.click_ok(editor)
 
+
+def _camp_lista(meta, eticheta: str):
+    """Câmpul-listă de lângă eticheta dată ("Tip Risc:", "Frecventa Control:"...). Eticheta (STATIC) și câmpul au
+    același nume, deci restrângem la clasa câmpului, ca selectorul robotului: aaname='X' cls='WindowsForms10.Window.*'."""
+    return meta.child_window(title=eticheta, class_name_re=r"WindowsForms10\.Window\..*")
+
+
+def _camp_text(meta, eticheta_re: str):
+    """Câmpul de text (RichEdit) de lângă etichetă: cls='WindowsForms10.RICHEDIT60W.*' ca în selectorul robotului."""
+    return meta.child_window(title_re=eticheta_re, class_name_re=r"WindowsForms10\.RICHEDIT.*")

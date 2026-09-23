@@ -333,6 +333,8 @@ class PentanaApp:
         """Click Image: caută șablonul în dreptunghiul controlului `within` (scope-ul din UiPath); la eșec dă click pe
         `fallback` (un selector), dacă este dat."""
         region = self.region_of(within) if within is not None else None
+        if timeout is None and fallback is not None:
+            timeout = 2  # avem selector de rezervă: nu așteptăm imaginea tot timeout-ul implicit (10 s)
         try:
             self.imagini.click(names, region=region, timeout=timeout, double=double)
             self.pause()

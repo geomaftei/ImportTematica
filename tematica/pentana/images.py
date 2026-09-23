@@ -47,6 +47,9 @@ class Imagini:
                     box = pyautogui.locateOnScreen(path, confidence=self.confidence, region=region, grayscale=False)
                 except pyautogui.ImageNotFoundException:  # pyautogui >= 0.9.54 ridică excepție
                     box = None
+                except ValueError as exc:  # zona de căutare e mai mică decât imaginea -> nu poate fi acolo
+                    log.debug("Imaginea %s nu încape în zona %s: %s", name, region, exc)
+                    box = None
                 if box is not None:
                     return name, box
             if time.monotonic() >= deadline:
