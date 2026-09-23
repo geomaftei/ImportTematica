@@ -31,10 +31,14 @@ class SalvareCopieSiguranta:
         # idx-ul din selectorul UiPath numără în toată fereastra, nu sub părinte, deci nu îl folosim
         editor = app.path(designer, "mp_Pages", "mpp_Editor", "c_Editor")
         toolbar = editor.child_window(auto_id="tb_Main", depth=1)
-        app.click(toolbar.child_window(auto_id="btn_Save"))    # "Salvare"
-        log.info("Șablonul a fost salvat")
-        app.click(toolbar.child_window(auto_id="btn_Close"))   # "Inchidere"
-        log.info("Editorul șablonului a fost închis")
+        if app.exists(toolbar.child_window(auto_id="btn_Save"), timeout=3):
+            app.click(toolbar.child_window(auto_id="btn_Save"))    # "Salvare"
+            log.info("Șablonul a fost salvat")
+            app.click(toolbar.child_window(auto_id="btn_Close"))   # "Inchidere"
+            log.info("Editorul șablonului a fost închis")
+        else:
+            # ex. `python main.py --only salvare --attach` cu lista de șabloane deja afișată
+            log.info("Editorul șablonului nu este deschis; trec direct la copia de siguranță")
 
         self.copie_de_siguranta(app.path(designer, "mp_Pages", "mpp_List", "lst_Templates"))
 
