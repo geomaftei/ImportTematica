@@ -21,7 +21,7 @@ logică cu alt filtru); aici este o singură implementare, `_proceseaza_nod`.
 from __future__ import annotations
 
 import logging
-from typing import Dict
+from typing import Dict, Optional
 
 import pandas as pd
 from pywinauto import keyboard
@@ -132,24 +132,68 @@ class IntroducereRiscuri:
 
         form = app.window("CreateWPTemplateForm")
         app.click(app.path(form, "pnl_Pages", "pg_Option", "btn_CreateBlank"))  # "Design Nou"
+        log.info("Formularul 'Creare șablon' deschis, varianta 'Design Nou'")
         details = app.path(form, "pnl_Pages", "pg_Details", "tbl_DetailsLayout")
-        app.paste_into(details.child_window(auto_id="txt_Name"), self.cfg["pentana.template_name"], select_all=True)
+        nume = self.cfg["pentana.template_name"]
+        app.paste_into(details.child_window(auto_id="txt_Name"), nume, select_all=True)
+        log.info("Numele șablonului: %s", nume)
 
-        # "Selectati legaturi" -> arborele AuditableEntityPickerControl -> entitatea din config
-        app.click(details.child_window(auto_id="lst_EntityLinks"))
-        picker = app.path(app.dropdown(), "pnl_Content", "AuditableEntityPickerControl")
-        app.select_tree_item(picker, self.cfg["pentana.entity_link"])
-        keyboard.send_keys("{ENTER}")
-        app.pause()
-        keyboard.send_keys("{ESC}")  # "ESC Pentana" - închide lista dacă a rămas deschisă
-        app.pause()
+        # "Entități asociate" -> arborele AuditableEntityPickerControl -> bifăm entitatea din config
+        self._bifeaza_entitate(form, details, self.cfg["pentana.entity_link"])
 
         # "Tipuri audit" -> Asigurare
         app.click(details.child_window(auto_id="lst_AuditType"))
         app.dropdown_select(self.cfg["pentana.audit_type"], tree_auto_id="MultiLevelListTreeControl")
+        log.info("Tip audit: %s", self.cfg["pentana.audit_type"])
         app.click(app.path(form, "pnl_Buttons", "btn_Next"))  # "Finalizare"
+        self._verifica_popup_formular(form)
         app.wait(self.editor)
-        log.info("Șablonul '%s' a fost creat", self.cfg["pentana.template_name"])
+        log.info("Șablonul '%s' a fost creat", nume)
+
+    def _bifeaza_entitate(self, form, details, entitate: str) -> None:
+        """Lista 'Entități asociate' are căsuțe de bifat: clicul pe text doar selectează rândul, deci bifăm
+        explicit (Toggle; altfel SPACE, tasta standard a unui TreeView cu căsuțe) și verificăm."""
+        app = self.app
+        app.click(details.child_window(auto_id="lst_EntityLinks"))
+        picker = app.path(app.dropdown(), "pnl_Content", "AuditableEntityPickerControl")
+        item = app.select_tree_item(picker, entitate)
+        stare = _stare_bifa(item)
+        log.info("Entitatea '%s' selectată; bifată: %s", entitate, _text_bifa(stare))
+        if stare != 1:
+            try:
+                item.toggle()
+                app.pause()
+                stare = _stare_bifa(item)
+                log.info("După Toggle: bifată %s", _text_bifa(stare))
+            except Exception:  # noqa: BLE001 - elementul nu expune Toggle
+                stare = None
+            if stare != 1:
+                # SPACE pe rândul selectat bifează căsuța într-un TreeView cu căsuțe
+                item.click_input()
+                keyboard.send_keys("{SPACE}")
+                app.pause()
+                stare = _stare_bifa(item)
+                log.info("După SPACE: bifată %s", _text_bifa(stare))
+        if stare == 0:
+            raise ApplicationException(f"Nu am reușit să bifez entitatea '{entitate}' în 'Entități asociate'")
+        # închidem lista confirmând (Enter, ca robotul), apoi un clic pe titlul formularului dacă a rămas deschisă;
+        # ESC ar anula alegerea
+        keyboard.send_keys("{ENTER}")
+        app.pause()
+        try:
+            app.window("DropDownComponentWindow", timeout=1)
+            log.info("Lista de entități a rămas deschisă; o închid cu un clic pe titlul formularului")
+            app.click(form.child_window(auto_id="lbl_PageTitle"))
+        except ApplicationException:
+            pass  # lista s-a închis
+
+    def _verifica_popup_formular(self, form) -> None:
+        """După 'Finalizare', Pentana poate afișa un mesaj de validare (InfoPopup) în loc să creeze șablonul."""
+        popup = form.child_window(auto_id="InfoPopup")
+        if self.app.exists(popup, timeout=3):
+            mesaj = popup.child_window(auto_id="lbl_Details")
+            text = mesaj.window_text() if self.app.exists(mesaj, timeout=1) else "(fără text)"
+            raise ApplicationException(f"Pentana a refuzat crearea șablonului: {text}")
 
     def _deschide_creare_sabloane(self) -> None:
         """Hover + dublu-click pe "Creare Sabloane" din meniul din stânga, ca robotul. Dacă aplicația era ocupată
@@ -353,3 +397,15 @@ class IntroducereRiscuri:
         app.paste_into(meta.child_window(title_re="^Detalii tehnici de testare.*"),
                        normalizeaza_spatii(test[COL_DETALII_TEHNICI]))
         app.click_ok(editor)
+
+
+def _stare_bifa(item) -> Optional[int]:
+    """Starea căsuței unui element de arbore: 1 bifat, 0 nebifat, None dacă nu se poate citi."""
+    try:
+        return int(item.get_toggle_state())
+    except Exception:  # noqa: BLE001 - elementul nu expune Toggle
+        return None
+
+
+def _text_bifa(stare: Optional[int]) -> str:
+    return {1: "da", 0: "nu"}.get(stare, "necunoscut")
