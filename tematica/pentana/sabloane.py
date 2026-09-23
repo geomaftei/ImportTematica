@@ -539,7 +539,7 @@ class IntroducereRiscuri:
                 pass
             raise ApplicationException("Nu am găsit lista de auditori (ResponsabilTest) în fereastra deschisă")
         nume_lista = [it.window_text() for it in app.wait(lista).descendants(control_type="TreeItem")]
-        log.debug("Auditori în lista ResponsabilTest: %s", nume_lista)
+        log.info("Lista ResponsabilTest: %d nume", len(nume_lista))  # numele nu se scriu în log (date personale)
 
         for auditor in auditori:
             p = potriveste_nume(auditor, nume_lista)
@@ -576,7 +576,9 @@ class IntroducereRiscuri:
         centru = ((r.left + r.right) // 2, (r.top + r.bottom) // 2)
 
         def pagina():
-            return [rand for rand in citeste_ecran(zona_text) if len(cuvinte_nume(rand.text)) >= 2]
+            # rândurile cu nume; fără antetul grupului ("Utilizatori audit", citit tăiat: "izatori audit")
+            return [rand for rand in citeste_ecran(zona_text)
+                    if len(cuvinte_nume(rand.text)) >= 2 and not _antet_grup(rand.text)]
 
         def sus():
             pyautogui.scroll(120 * 50, x=centru[0], y=centru[1])
@@ -608,7 +610,6 @@ class IntroducereRiscuri:
         for randuri in paginile():
             vazute += [rand.text for rand in randuri if rand.text not in vazute]
         log.info("Lista de utilizatori citită prin OCR: %d nume", len(vazute))
-        log.debug("Utilizatori: %s", vazute)
         tinte = {}
         for auditor in auditori:
             p = potriveste_nume(auditor, vazute)
@@ -706,6 +707,12 @@ class IntroducereRiscuri:
             problema = f"Testul {eticheta_test}: termenul {text} nu apare în câmp (valoare citită: '{valoare}')"
             log.warning("De verificat: %s", problema)
             self.probleme_termen.append(problema)
+
+
+def _antet_grup(text: str) -> bool:
+    """Antetul grupului din lista de utilizatori ("Utilizatori audit"), eventual tăiat la stânga de zona citită."""
+    c = cuvinte_nume(text)
+    return bool(c) and len(c[0]) >= 4 and "utilizatori".endswith(c[0])
 
 
 def _bifat(x: int, y: int) -> bool:
