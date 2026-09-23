@@ -14,6 +14,7 @@ ROWS = []
 
 def rand(proces, arie, subarie, risc, tip_risc, control, frecventa, test, tehnici):
     ROWS.append({
+        m.COL_COD_APR: f"{len(ROWS) + 1}",
         m.COL_PROCES: proces, m.COL_ARIE: arie, m.COL_SUBARIE: subarie,
         m.COL_DESCRIERE_RISC: risc, m.COL_TIP_RISC: tip_risc,
         m.COL_DENUMIRE_CONTROL: control, m.COL_DESCRIERE_CONTROL: f"Descriere {control}",

@@ -64,7 +64,8 @@ Teste (partea de date, fără Pentana): `pytest`.
 
 ## Formatul matricei (Sheet1)
 
-Coloane obligatorii: `Proces`, `Arie`, `SubArie`, `Descriere Risc`, `Tip Risc`, `Denumire Control`,
+Coloane obligatorii: `Cod referinta APR (Nr. Crt.)` (prima coloană; se scrie la fiecare test, în câmpul `CodApr:` de pe
+tab-ul „Tehnici De Testare”), `Proces`, `Arie`, `SubArie`, `Descriere Risc`, `Tip Risc`, `Denumire Control`,
 `Descriere Control (Criterii)`, `Tip Control`, `Frecventa Control`, `Cadru de reglementare (Criterii)`, `Denumire Test`,
 `Tehnici de Testare`, `Detalii Tehnici de Testare`. Un rând = un test; celelalte niveluri se deduc prin
 eliminarea duplicatelor, exact ca în robot. `SubArie` gol înseamnă că riscul este atașat direct ariei.

@@ -10,6 +10,7 @@ from tematica.exceptions import BusinessRuleException
 
 def _rand(proces, arie, subarie, risc, tip_risc="Risc operational", control="C1", test="T1"):
     return {
+        m.COL_COD_APR: f"APR-{test}",
         m.COL_PROCES: proces, m.COL_ARIE: arie, m.COL_SUBARIE: subarie,
         m.COL_DESCRIERE_RISC: risc, m.COL_TIP_RISC: tip_risc,
         m.COL_DENUMIRE_CONTROL: control, m.COL_DESCRIERE_CONTROL: f"Descriere {control}",
@@ -88,3 +89,19 @@ def test_cap_de_tabel_nou_si_vechi(tmp_path: Path):
     control = mat.controale.iloc[0]
     assert control[m.COL_DESCRIERE_CONTROL] == "Descriere C1"
     assert control[m.COL_CADRU_CONTROL] == "Regulament"
+
+
+def test_cod_apr_la_teste(xlsx):
+    """'Cod referinta APR (Nr. Crt.)' (prima coloană) ajunge la fiecare test."""
+    mat = m.citeste_matrice(xlsx)
+    control = mat.controale_pentru(mat.riscuri_pentru("P1", "A1").iloc[0]).iloc[0]
+    assert mat.teste_pentru(control)[m.COL_COD_APR].tolist() == ["APR-T1", "APR-T2"]
+
+
+def test_fara_cod_apr(tmp_path: Path):
+    """O matrice fără coloana nouă se citește în continuare; codul e gol."""
+    p = tmp_path / "fara_cod.xlsx"
+    pd.DataFrame([_rand("P1", "A1", "", "R1")]).drop(columns=[m.COL_COD_APR]).to_excel(p, sheet_name="Sheet1",
+                                                                                       index=False)
+    mat = m.citeste_matrice(p)
+    assert mat.teste[m.COL_COD_APR].tolist() == [""]

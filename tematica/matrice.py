@@ -6,6 +6,7 @@ plus condițiile IF cu care robotul lega riscurile, controalele și testele de p
 """
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,7 +16,10 @@ import pandas as pd
 
 from .exceptions import BusinessRuleException
 
+log = logging.getLogger("tematica.matrice")
+
 # Coloanele matricei, exact cum apar în Sheet1 (numele sunt cele folosite în selectorii UiPath).
+COL_COD_APR = "Cod referinta APR (Nr. Crt.)"  # prima coloană; se scrie la test, câmpul "CodApr:"
 COL_PROCES = "Proces"
 COL_ARIE = "Arie"
 COL_SUBARIE = "SubArie"
@@ -47,7 +51,7 @@ COLOANE_RISC = [COL_DESCRIERE_RISC, COL_TIP_RISC, COL_PROCES, COL_ARIE, COL_SUBA
 COLOANE_CONTROL = COLOANE_RISC[:2] + [
     COL_DENUMIRE_CONTROL, COL_DESCRIERE_CONTROL, COL_TIP_CONTROL, COL_FRECVENTA_CONTROL, COL_CADRU_CONTROL,
 ] + COLOANE_RISC[2:]
-COLOANE_TEST = COLOANE_CONTROL[:7] + [COL_DENUMIRE_TEST, COL_TEHNICI_TEST, COL_DETALII_TEHNICI] + COLOANE_RISC[2:]
+COLOANE_TEST = COLOANE_CONTROL[:7] + [COL_DENUMIRE_TEST, COL_TEHNICI_TEST, COL_DETALII_TEHNICI, COL_COD_APR] + COLOANE_RISC[2:]
 
 
 def normalizeaza_spatii(text: str) -> str:
@@ -110,6 +114,10 @@ def citeste_matrice(cale: Union[str, Path], sheet: str = "Sheet1") -> Matrice:
     for col in baza.columns:
         baza[col] = baza[col].astype(str).str.strip()
 
+    if COL_COD_APR not in baza.columns:
+        # matricele de dinainte de coloana "Cod referinta APR" se pot citi în continuare, fără cod la teste
+        log.warning("Matricea nu are coloana '%s'; câmpul CodApr al testelor rămâne gol", COL_COD_APR)
+        baza[COL_COD_APR] = ""
     lipsa = [c for c in COLOANE_OBLIGATORII if c not in baza.columns]
     if lipsa:
         raise BusinessRuleException(

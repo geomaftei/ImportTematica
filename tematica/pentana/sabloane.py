@@ -33,7 +33,7 @@ from ..config import Config
 from ..exceptions import ApplicationException
 from ..matrice import (
     COL_CADRU_CONTROL, COL_DENUMIRE_CONTROL, COL_DENUMIRE_TEST, COL_DESCRIERE_CONTROL, COL_DESCRIERE_RISC,
-    COL_DETALII_TEHNICI, COL_FRECVENTA_CONTROL, COL_TEHNICI_TEST, COL_TIP_RISC, Matrice, normalizeaza_spatii,
+    COL_COD_APR, COL_DETALII_TEHNICI, COL_FRECVENTA_CONTROL, COL_TEHNICI_TEST, COL_TIP_RISC, Matrice, normalizeaza_spatii,
 )
 from .app import PentanaApp
 
@@ -472,6 +472,14 @@ class IntroducereRiscuri:
         log.info("Scriu Detalii Tehnici de Testare: %s", test[COL_DETALII_TEHNICI])
         app.paste_into(_camp_text(meta, "^Detalii tehnici de testare.*"),
                        normalizeaza_spatii(test[COL_DETALII_TEHNICI]))
+
+        # "Cod referinta APR (Nr. Crt.)" din matrice -> câmpul de lângă eticheta "CodApr:" (tot pe tab-ul tehnicilor)
+        cod = normalizeaza_spatii(test.get(COL_COD_APR, ""))
+        if cod:
+            log.info("Scriu CodApr: %s", cod)
+            app.seteaza_text(_camp_nu_eticheta(meta, "^CodApr.*"), cod)
+        else:
+            log.info("Testul nu are Cod referinta APR; câmpul CodApr rămâne gol")
         app.click_ok(editor)
 
 
@@ -479,6 +487,12 @@ def _camp_lista(meta, eticheta: str):
     """Câmpul-listă de lângă eticheta dată ("Tip Risc:", "Frecventa Control:"...). Eticheta (STATIC) și câmpul au
     același nume, deci restrângem la clasa câmpului, ca selectorul robotului: aaname='X' cls='WindowsForms10.Window.*'."""
     return meta.child_window(title=eticheta, class_name_re=r"WindowsForms10\.Window\..*")
+
+
+def _camp_nu_eticheta(meta, eticheta_re: str):
+    """Câmpul de lângă o etichetă, oricare ar fi tipul lui (RichEdit, Edit...): orice control cu același nume în
+    afară de eticheta însăși (STATIC)."""
+    return meta.child_window(title_re=eticheta_re, class_name_re=r"WindowsForms10\.(?!STATIC).*")
 
 
 def _camp_text(meta, eticheta_re: str):

@@ -76,7 +76,9 @@ class Framework:
             for _, control in m.controale_pentru(risc).iterrows():
                 print(f"{indent}  CONTROL [{control['Frecventa Control']}] {control['Denumire Control']}")
                 for _, test in m.teste_pentru(control).iterrows():
-                    print(f"{indent}    TEST {test['Denumire Test']}  ({test['Tehnici de Testare']})")
+                    cod = test.get("Cod referinta APR (Nr. Crt.)", "")
+                    print(f"{indent}    TEST {test['Denumire Test']}  ({test['Tehnici de Testare']})"
+                          + (f"  [CodApr {cod}]" if cod else ""))
 
     # ------------------------------------------------------------ Main loop
     def run(self, fisier: Optional[Path] = None) -> int:
