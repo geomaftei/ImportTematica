@@ -1,7 +1,8 @@
 """SalvareCopieSiguranta.xaml - salvează și închide șablonul, apoi face o copie de siguranță.
 
 Copia de siguranță: în lista de șabloane, clic pe starea "In progres" a șablonului nostru -> fereastra de acțiuni
-(DropDownComponentWindow / UserActionsLayoutContainer) -> "Copie de siguranță securizată" (fără confirmare).
+(DropDownComponentWindow / UserActionsLayoutContainer) -> "Copie de siguranță securizată" ->
+"Confirmare copie de rezervă securizată" (în aceeași fereastră).
 Grila de șabloane își desenează singură rândurile (nu apar în UIA), deci:
   - filtrăm lista după numele șablonului (câmpul "Filtre:"), ca să rămână doar rândul nostru;
   - găsim starea după imaginea Data/Images/stare_in_progres.png (decupată din aplicație, la scalarea 125%).
@@ -75,8 +76,15 @@ class SalvareCopieSiguranta:
             app.click(actiune)
         else:
             app.click_image("copie_siguranta_securizata", within=dd, timeout=5)
-        # după această acțiune Pentana nu mai cere nicio confirmare
-        log.info("Copia de siguranță securizată a șablonului '%s' a fost făcută", nume)
+        log.info("Am ales acțiunea 'Copie de siguranță securizată'")
+
+        # în aceeași fereastră apare apoi "Confirmare copie de rezervă securizată"
+        confirmare = dd.child_window(title_re=r"^Confirmare copie de rezerv. securizat.*")
+        if app.exists(confirmare, timeout=3):
+            app.click(confirmare)
+        else:
+            app.click_image("confirmare_copie_securizata", within=dd, timeout=5)
+        log.info("Copia de siguranță securizată a șablonului '%s' a fost confirmată", nume)
 
     def _activ(self, spec) -> bool:
         try:

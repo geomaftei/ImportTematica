@@ -28,7 +28,8 @@ context = TransactionContext()
 
 def setup_logging(log_dir: Path, process_name: str) -> logging.Logger:
     log_dir.mkdir(parents=True, exist_ok=True)
-    log_file = log_dir / f"{datetime.now():%Y-%m-%d}_IntroducereTematica.log"
+    # un fișier separat pentru fiecare rulare
+    log_file = log_dir / f"{datetime.now():%Y-%m-%d_%H-%M-%S}_IntroducereTematica.log"
     fmt = logging.Formatter("%(asctime)s | %(levelname)-7s | %(transaction)s | %(name)s | %(message)s")
 
     root = logging.getLogger()

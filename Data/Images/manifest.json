@@ -78,5 +78,9 @@
   "copie_siguranta_securizata": {
     "descriere": "Acțiunea 'Copie de siguranță securizată' din fereastra 'Acțiuni Șablon Tematici de Audit'",
     "sursa": "decupat din captura utilizatorului din 23.09.2026 18:24 (scalare 125%), nu din robotul UiPath"
+  },
+  "confirmare_copie_securizata": {
+    "descriere": "'Confirmare copie de rezervă securizată' din fereastra de acțiuni, după 'Copie de siguranță securizată'",
+    "sursa": "decupat din captura utilizatorului din 23.09.2026 18:36 (scalare 125%), nu din robotul UiPath"
   }
 }
