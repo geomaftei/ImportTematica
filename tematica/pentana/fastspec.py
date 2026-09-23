@@ -36,7 +36,7 @@ def _cache_request():
     cr = u.iuia.CreateCacheRequest()
     d = u.UIA_dll
     for pid in (d.UIA_AutomationIdPropertyId, d.UIA_NamePropertyId, d.UIA_ControlTypePropertyId,
-                d.UIA_ClassNamePropertyId, d.UIA_IsOffscreenPropertyId):
+                d.UIA_ClassNamePropertyId, d.UIA_IsOffscreenPropertyId, d.UIA_BoundingRectanglePropertyId):
         cr.AddProperty(pid)
     return cr
 
@@ -141,8 +141,13 @@ def arbore_controale(root, depth: int = 8) -> str:
         for c in lista:
             tip = IUIA().known_control_type_ids.get(c.CachedControlType, str(c.CachedControlType))
             ascuns = " [offscreen]" if c.CachedIsOffscreen else ""
+            try:
+                r = c.CachedBoundingRectangle
+                rect = f" rect=({r.left},{r.top},{r.right},{r.bottom})"
+            except Exception:  # noqa: BLE001
+                rect = ""
             linii.append("  " * nivel + f"{tip} auto_id={c.CachedAutomationId!r} name={c.CachedName!r} "
-                                        f"class={c.CachedClassName!r}{ascuns}")
+                                        f"class={c.CachedClassName!r}{rect}{ascuns}")
             if tip in NU_COBORI:
                 try:
                     linii.append("  " * (nivel + 1) + f"... {len(copii(c))} elemente (neparcurse)")

@@ -1,10 +1,20 @@
-"""SalvareCopieSiguranta.xaml - salvează și închide șablonul, apoi face o copie de siguranță."""
+"""SalvareCopieSiguranta.xaml - salvează și închide șablonul, apoi face o copie de siguranță.
+
+Copia de siguranță: în lista de șabloane, clic pe starea "In progres" a șablonului nostru -> fereastra de acțiuni
+(DropDownComponentWindow / UserActionsLayoutContainer / c_ActionSelect) -> acțiunea -> "Confirm".
+Grila de șabloane își desenează singură rândurile (nu apar în UIA), deci:
+  - filtrăm lista după numele șablonului (câmpul "Filtre:"), ca să rămână doar rândul nostru;
+  - găsim starea după imaginea Data/Images/stare_in_progres.png (decupată din aplicație, la scalarea 125%).
+"""
 from __future__ import annotations
 
 import logging
+import time
 
 from ..config import Config
+from ..exceptions import ApplicationException
 from .app import PentanaApp
+from .fastspec import arbore_controale
 
 log = logging.getLogger("tematica.pentana.salvare")
 
@@ -22,16 +32,42 @@ class SalvareCopieSiguranta:
         editor = app.path(designer, "mp_Pages", "mpp_Editor", "c_Editor")
         toolbar = editor.child_window(auto_id="tb_Main", depth=1)
         app.click(toolbar.child_window(auto_id="btn_Save"))    # "Salvare"
+        log.info("Șablonul a fost salvat")
         app.click(toolbar.child_window(auto_id="btn_Close"))   # "Inchidere"
+        log.info("Editorul șablonului a fost închis")
 
-        # "Copie de siguranta": lista de șabloane -> acțiunea din meniul UserActionsLayoutContainer -> Confirm
-        templates = app.path(designer, "mp_Pages", "mpp_List", "lst_Templates")
-        app.click(templates.child_window(title="Horizontal"))
-        actions = app.path(app.dropdown(), "pnl_Content", "UserActionsLayoutContainer", "c_ActionSelect")
-        app.click(actions)
-        confirm = actions.child_window(title_re="^Confirm.*", control_type="Button")
+        self.copie_de_siguranta(app.path(designer, "mp_Pages", "mpp_List", "lst_Templates"))
+
+    def copie_de_siguranta(self, templates) -> None:
+        app = self.app
+        nume = self.cfg["pentana.template_name"]
+        app.wait(templates, timeout=30)
+
+        # doar rândul nostru în listă: câmpul "Filtre:" de deasupra grilei
+        filtru = templates.child_window(title="Filtre:", control_type="Edit")
+        if app.exists(filtru, timeout=3):
+            app.seteaza_text(filtru, nume)
+            time.sleep(2)  # lista se reîmprospătează după filtrare
+            log.info("Lista de șabloane filtrată după '%s'", nume)
+        else:
+            log.warning("Nu am găsit câmpul 'Filtre:' al listei de șabloane; aleg primul 'In progres' din listă")
+
+        # "Copie de siguranta": clic pe starea "In progres" -> fereastra de acțiuni
+        app.click_image("stare_in_progres", within=templates, timeout=10)
+        try:
+            dd = app.window("DropDownComponentWindow", timeout=10)
+        except ApplicationException as exc:
+            raise ApplicationException("După clicul pe 'In progres' nu a apărut fereastra de acțiuni") from exc
+        try:
+            log.debug("Fereastra de acțiuni:\n%s", arbore_controale(dd.wrapper_object(), depth=8))
+        except Exception:  # noqa: BLE001 - doar diagnostic
+            pass
+
+        actiuni = app.path(dd, "pnl_Content", "UserActionsLayoutContainer", "c_ActionSelect")
+        app.click(actiuni)
+        confirm = dd.child_window(title_re="^Confirm.*", control_type="Button")
         if app.exists(confirm, timeout=3):
             app.click(confirm)
         else:
-            app.click(actions)  # robotul dădea al doilea click în același container
-        log.info("Șablonul a fost salvat și s-a făcut copia de siguranță")
+            app.click(actiuni)  # robotul dădea al doilea clic în același container ("Confirm")
+        log.info("Copia de siguranță a șablonului '%s' a fost confirmată", nume)

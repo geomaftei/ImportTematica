@@ -70,5 +70,9 @@
   "selectare_niciun_element_2": {
     "descriere": "'Selectare niciun element' (varianta cu pătrat punctat)",
     "sursa": "IntroducereRiscuri.xaml - \"Click Image 'Selectare niciun element.'\""
+  },
+  "stare_in_progres": {
+    "descriere": "Starea 'In progres' (albastru) a șablonului în lista de șabloane; clicul deschide fereastra de acțiuni (copie de siguranță)",
+    "sursa": "decupat din captura ExceptionReport_20260923_122059 (scalare 125%), nu din robotul UiPath"
   }
 }
