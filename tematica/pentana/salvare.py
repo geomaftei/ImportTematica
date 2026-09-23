@@ -17,7 +17,10 @@ class SalvareCopieSiguranta:
     def ruleaza(self) -> None:
         app = self.app
         designer = app.path(app.main, "pnl_Main", "AuditDesignSection", "_sectionArea", "WPTemplateDesigner2")
-        toolbar = app.path(designer, "mp_Pages", "mpp_Editor", "c_Editor", ("tb_Main", 2))
+        # bara cu Salvare / Închidere e copil direct al c_Editor (mai adânc există alte tb_Main, ex. în RCMatrixEditor);
+        # idx-ul din selectorul UiPath numără în toată fereastra, nu sub părinte, deci nu îl folosim
+        editor = app.path(designer, "mp_Pages", "mpp_Editor", "c_Editor")
+        toolbar = editor.child_window(auto_id="tb_Main", depth=1)
         app.click(toolbar.child_window(auto_id="btn_Save"))    # "Salvare"
         app.click(toolbar.child_window(auto_id="btn_Close"))   # "Inchidere"
 

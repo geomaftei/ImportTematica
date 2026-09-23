@@ -232,7 +232,7 @@ class IntroducereRiscuri:
         app = self.app
         descriere = normalizeaza_spatii(risc[COL_DESCRIERE_RISC])
         log.info("Adauga risc: %s", descriere)
-        app.click(app.path(self.rc_matrix, ("tb_Main", 1), "btn_AddRisk"))
+        app.click(app.path(self.rc_matrix, "tb_Main", "btn_AddRisk"))
         app.click_menu_item("Creare risc nou", keyboard_fallback=("{TAB}", "{ENTER}"))
 
         editor = app.window("RiskTemplateEditor")
@@ -348,7 +348,7 @@ class IntroducereRiscuri:
     # --- teste -------------------------------------------------------------
     def deschide_teste(self) -> None:
         """"Editare teste pt control": butonul btn_EditTests (ramura Arie) sau meniul celulei (ramura Sub-arie)."""
-        btn = self.app.path(self.rc_matrix, ("tb_Links", 1), "btn_EditTests")
+        btn = self.app.path(self.rc_matrix, "tb_Links", "btn_EditTests")
         if self.app.exists(btn, timeout=3):
             self.app.click(btn)
             return
@@ -359,7 +359,7 @@ class IntroducereRiscuri:
     def inchide_teste(self) -> None:
         log.info("Merg la urmatorul test")
         self.app.click_image("editare_teste_pentru_controlul_selectat", within=self.app.main,
-                             fallback=self.app.path(self.rc_matrix, ("tb_Links", 1), "btn_EditTests"))
+                             fallback=self.app.path(self.rc_matrix, "tb_Links", "btn_EditTests"))
 
     def adauga_test(self, test: pd.Series) -> None:
         app = self.app
