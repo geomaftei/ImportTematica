@@ -40,6 +40,7 @@ class Framework:
         log.info("Matrice: %d procese, %d arii, %d riscuri, %d controale, %d teste",
                  len(matrice.procese), len(matrice.arii), len(matrice.riscuri), len(matrice.controale),
                  len(matrice.teste))
+        log.info("Pași de rulat: %s", ", ".join(self.pasi))
         if self.dry_run:
             self._afiseaza(matrice)
             return

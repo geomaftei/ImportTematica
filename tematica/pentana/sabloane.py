@@ -21,7 +21,7 @@ logică cu alt filtru); aici este o singură implementare, `_proceseaza_nod`.
 from __future__ import annotations
 
 import logging
-from typing import Dict, Optional
+from typing import Dict
 
 import pandas as pd
 from pywinauto import keyboard
@@ -139,53 +139,35 @@ class IntroducereRiscuri:
         log.info("Numele șablonului: %s", nume)
 
         # "Entități asociate" -> arborele AuditableEntityPickerControl -> bifăm entitatea din config
-        self._bifeaza_entitate(form, details, self.cfg["pentana.entity_link"])
+        entitate = self.cfg["pentana.entity_link"]
+        app.click(details.child_window(auto_id="lst_EntityLinks"))
+        app.bifeaza_element(app.path(app.dropdown(), "pnl_Content", "AuditableEntityPickerControl"), entitate)
+        self._inchide_lista(form)
+        log.info("Entitate asociată: %s", entitate)
 
-        # "Tipuri audit" -> Asigurare
+        # "Tipuri audit conexate" -> bifăm tipul din config (Asigurare)
+        tip = self.cfg["pentana.audit_type"]
         app.click(details.child_window(auto_id="lst_AuditType"))
-        app.dropdown_select(self.cfg["pentana.audit_type"], tree_auto_id="MultiLevelListTreeControl")
-        log.info("Tip audit: %s", self.cfg["pentana.audit_type"])
+        app.bifeaza_element(app.path(app.dropdown(), "pnl_Content", "MultiLevelListTreeControl", "tv_Items"), tip)
+        self._inchide_lista(form)
+        log.info("Tip audit conexat: %s", tip)
         app.click(app.path(form, "pnl_Buttons", "btn_Next"))  # "Finalizare"
         self._verifica_popup_formular(form)
         app.wait(self.editor)
         log.info("Șablonul '%s' a fost creat", nume)
 
-    def _bifeaza_entitate(self, form, details, entitate: str) -> None:
-        """Lista 'Entități asociate' are căsuțe de bifat: clicul pe text doar selectează rândul, deci bifăm
-        explicit (Toggle; altfel SPACE, tasta standard a unui TreeView cu căsuțe) și verificăm."""
+    def _inchide_lista(self, form) -> None:
+        """Închide lista derulantă confirmând (Enter, ca robotul); dacă a rămas deschisă, un clic pe titlul
+        formularului. ESC ar anula alegerea."""
         app = self.app
-        app.click(details.child_window(auto_id="lst_EntityLinks"))
-        picker = app.path(app.dropdown(), "pnl_Content", "AuditableEntityPickerControl")
-        item = app.select_tree_item(picker, entitate)
-        stare = _stare_bifa(item)
-        log.info("Entitatea '%s' selectată; bifată: %s", entitate, _text_bifa(stare))
-        if stare != 1:
-            try:
-                item.toggle()
-                app.pause()
-                stare = _stare_bifa(item)
-                log.info("După Toggle: bifată %s", _text_bifa(stare))
-            except Exception:  # noqa: BLE001 - elementul nu expune Toggle
-                stare = None
-            if stare != 1:
-                # SPACE pe rândul selectat bifează căsuța într-un TreeView cu căsuțe
-                item.click_input()
-                keyboard.send_keys("{SPACE}")
-                app.pause()
-                stare = _stare_bifa(item)
-                log.info("După SPACE: bifată %s", _text_bifa(stare))
-        if stare == 0:
-            raise ApplicationException(f"Nu am reușit să bifez entitatea '{entitate}' în 'Entități asociate'")
-        # închidem lista confirmând (Enter, ca robotul), apoi un clic pe titlul formularului dacă a rămas deschisă;
-        # ESC ar anula alegerea
         keyboard.send_keys("{ENTER}")
         app.pause()
         try:
             app.window("DropDownComponentWindow", timeout=1)
-            log.info("Lista de entități a rămas deschisă; o închid cu un clic pe titlul formularului")
-            app.click(form.child_window(auto_id="lbl_PageTitle"))
         except ApplicationException:
-            pass  # lista s-a închis
+            return  # lista s-a închis
+        log.info("Lista a rămas deschisă; o închid cu un clic pe titlul formularului")
+        app.click(form.child_window(auto_id="lbl_PageTitle"))
 
     def _verifica_popup_formular(self, form) -> None:
         """După 'Finalizare', Pentana poate afișa un mesaj de validare (InfoPopup) în loc să creeze șablonul."""
@@ -221,14 +203,28 @@ class IntroducereRiscuri:
         nume în ProcessUniverseSelectionTree, apoi confirmăm cu Enter.
         """
         app = self.app
-        app.click(self.tree_picker)
-        tree = app.path(app.dropdown(), "pnl_Content", "ProcessUniverseSelectionTree", "tv_Processes")
+        dd = None
+        for incercare in range(1, 4):
+            app.click(self.tree_picker)
+            try:
+                dd = app.window("DropDownComponentWindow", timeout=5)
+                break
+            except ApplicationException:
+                log.warning("Lista de procese nu s-a deschis după clic (încercarea %d din 3)", incercare)
+                app.pause(3)
+        if dd is None:
+            raise ApplicationException("Lista de procese (pb_EditInclusion) nu s-a deschis după 3 clicuri")
+        tree = app.path(dd, "pnl_Content", "ProcessUniverseSelectionTree", "tv_Processes")
         app.select_tree_item(tree, nume)
         keyboard.send_keys("{ENTER}")
         app.pause()
-        if app.exists(app.dropdown(), timeout=1):
-            keyboard.send_keys("{ESC}")
-            app.pause()
+        try:
+            app.window("DropDownComponentWindow", timeout=1)
+        except ApplicationException:
+            return  # lista s-a închis după Enter
+        log.info("Lista de procese a rămas deschisă după Enter; o închid cu ESC")
+        keyboard.send_keys("{ESC}")
+        app.pause()
 
     # --- risc ------------------------------------------------------------
     def adauga_risc(self, risc: pd.Series) -> None:
@@ -398,14 +394,3 @@ class IntroducereRiscuri:
                        normalizeaza_spatii(test[COL_DETALII_TEHNICI]))
         app.click_ok(editor)
 
-
-def _stare_bifa(item) -> Optional[int]:
-    """Starea căsuței unui element de arbore: 1 bifat, 0 nebifat, None dacă nu se poate citi."""
-    try:
-        return int(item.get_toggle_state())
-    except Exception:  # noqa: BLE001 - elementul nu expune Toggle
-        return None
-
-
-def _text_bifa(stare: Optional[int]) -> str:
-    return {1: "da", 0: "nu"}.get(stare, "necunoscut")

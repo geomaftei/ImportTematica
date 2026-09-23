@@ -424,6 +424,32 @@ class PentanaApp:
                          fallback=self.path(dd, "pnl_Content", tree_auto_id, "tb_Main", "btn_SelectNone"))
         return False
 
+    def bifeaza_element(self, tree_spec, name: str):
+        """Bifează un element dintr-o listă cu căsuțe (Entități asociate, Tipuri audit conexate). Clicul pe text doar
+        selectează rândul; bifa se pune cu Toggle sau, dacă elementul nu îl expune, cu SPACE pe rândul selectat.
+        Dacă elementul este deja bifat nu se mai apasă nimic (SPACE l-ar debifa)."""
+        item = self.select_tree_item(tree_spec, name)
+        stare = stare_bifa(item)
+        log.info("'%s' selectat; bifat: %s", name, text_bifa(stare))
+        if stare == 1:
+            return item
+        try:
+            item.toggle()
+            self.pause()
+            stare = stare_bifa(item)
+            log.info("După Toggle: bifat %s", text_bifa(stare))
+        except Exception:  # noqa: BLE001 - elementul nu expune Toggle
+            stare = None
+        if stare != 1:
+            item.click_input()
+            keyboard.send_keys("{SPACE}")
+            self.pause()
+            stare = stare_bifa(item)
+            log.info("După SPACE: bifat %s", text_bifa(stare))
+        if stare == 0:
+            raise ApplicationException(f"Nu am reușit să bifez '{name}'")
+        return item
+
     def dropdown_toggle(self, name: str, tree_auto_id: str = "DataListTreeControl") -> None:
         """Bifează un element dintr-o listă cu bife (ex. tehnici de testare)."""
         tree = self.path(self.dropdown(), "pnl_Content", tree_auto_id, "tv_Items")
@@ -435,6 +461,28 @@ class PentanaApp:
             # controlul nu expune Toggle; robotul apăsa o tastă pe element (SpecialKey) - folosim SPACE
             keyboard.send_keys("{SPACE}")
         self.pause()
+
+
+_STATE_SYSTEM_CHECKED = 0x10
+
+
+def stare_bifa(item) -> Optional[int]:
+    """Starea căsuței unui element: 1 bifat, 0 nebifat, None dacă nu se poate afla. Întâi Toggle (UIA), apoi
+    starea MSAA (LegacyIAccessible) - controalele WinForms custom raportează bifa doar acolo."""
+    try:
+        return int(item.get_toggle_state())
+    except Exception:  # noqa: BLE001 - elementul nu expune Toggle
+        pass
+    try:
+        if int(item.legacy_properties().get("State", 0)) & _STATE_SYSTEM_CHECKED:
+            return 1
+    except Exception:  # noqa: BLE001
+        pass
+    return None  # starea MSAA fără bifă nu înseamnă sigur "nebifat" (poate controlul nu o raportează)
+
+
+def text_bifa(stare: Optional[int]) -> str:
+    return {1: "da", 0: "nu"}.get(stare, "necunoscut")
 
 
 def describe(spec) -> str:

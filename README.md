@@ -57,6 +57,9 @@ python main.py --only riscuri --attach       # un singur pas, pe o instanță Pe
 python tools/genereaza_exemplu.py            # scrie o matrice de exemplu în Data/Input/
 ```
 
+Pentru a sări peste crearea Universului de procese (când a fost deja introdus), pune în `config.yaml`
+`framework.sari_peste_univers: true` – aplicația pornește și trece direct la crearea șablonului.
+
 Teste (partea de date, fără Pentana): `pytest`.
 
 ## Formatul matricei (Sheet1)

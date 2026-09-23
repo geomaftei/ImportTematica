@@ -28,7 +28,7 @@ debug:
   # La fiecare eroare de sistem se creează Data/Exceptions_Screenshots/ExceptionReport_<data>.zip cu captura de
   # ecran, raportul erorii, arborele de controale al ferestrei principale (până la adâncimea de mai jos) și logul.
   # Folderul se golește înainte: rămâne mereu doar ultimul pachet.
-  tree_depth: 8
+  tree_depth: 16
 
 images:
   # Șabloanele de imagine extrase din activitățile "Click Image" ale robotului (Data/Images, vezi manifest.json).
@@ -49,6 +49,10 @@ framework:
   business_process_name: Introducere tematica in Aplicatia Audit
   # Câte reîncercări la eroare de sistem (0 = ca în UiPath, fără retry).
   max_retries: 0
+  # true = sare peste crearea Universului de procese (procese / arii / sub-arii): pornește aplicația și trece direct
+  # la crearea șablonului. Util când Universul a fost deja introdus la o rulare anterioară.
+  # (Opțiunea --only din linia de comandă are prioritate.)
+  sari_peste_univers: false
 
 credentials:
   # Asset-ul Orchestrator "AuditIntroducereTematica" -> variabilele de mediu PENTANA_USER / PENTANA_PASSWORD
