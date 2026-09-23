@@ -559,9 +559,8 @@ class IntroducereRiscuri:
 
     def _bifeaza_auditori_ocr(self, dd, utilizatori, auditori: List[str], eticheta_test: str) -> None:
         """Lista "Utilizatori audit" (UserSelectionControl / lst_Users): căsuță + nume pe fiecare rând, desenate de
-        control. (1) derulăm lista de sus până jos și citim toate numele prin OCR; (2) potrivim fiecare auditor din
-        Excel cu lista completă (ca să prindem și ambiguitățile); (3) derulăm din nou și dăm clic pe căsuța fiecărui
-        auditor găsit, verificând pe ecran că s-a bifat."""
+        control, în ordine alfabetică. O singură trecere de sus în jos: citim pagina afișată prin OCR, bifăm
+        auditorii care apar pe ea, trecem la pagina următoare doar cât timp mai avem auditori de găsit."""
         app = self.app
         lst = app.wait(utilizatori)
         r = lst.rectangle()
@@ -574,98 +573,79 @@ class IntroducereRiscuri:
         # măsurat la 125%: căsuța are centrul la 17 px de marginea listei, textul începe la 30 px
         x_bifa = r.left + int(round(14 * s))
         zona_text = (r.left + int(round(22 * s)), r.top, dreapta, r.bottom)
-        centru = ((r.left + r.right) // 2, (r.top + r.bottom) // 2)
+        try:
+            lst.set_focus()  # altfel primul clic doar activează lista și nu pune bifa
+        except Exception:  # noqa: BLE001
+            pass
 
         def pagina():
-            # rândurile cu nume; fără antetul grupului ("Utilizatori audit", citit tăiat: "izatori audit")
-            return [rand for rand in citeste_ecran(zona_text)
-                    if len(cuvinte_nume(rand.text)) >= 2 and not _antet_grup(rand.text)]
+            """Rândurile cu nume de pe pagina afișată, citite când lista nu se mai mișcă (două citiri identice);
+            fără antetul grupului ("Utilizatori audit", citit tăiat: "izatori audit")."""
+            anterior, randuri = None, []
+            for _ in range(8):
+                randuri = [rand for rand in citeste_ecran(zona_text)
+                           if len(cuvinte_nume(rand.text)) >= 2 and not _antet_grup(rand.text)]
+                cheie = [(rand.text, rand.centru_y) for rand in randuri]
+                if cheie == anterior:
+                    break
+                anterior = cheie
+                time.sleep(0.25)
+            return randuri
 
-        def sus():
-            pyautogui.scroll(120 * 50, x=centru[0], y=centru[1])
-            time.sleep(0.5)
-
-        def jos():
+        def urmatoarea_pagina() -> bool:
             buton = bara.child_window(title="Page down", control_type="Button")
             try:
                 app.wait(buton, timeout=1).click_input()
             except Exception:  # noqa: BLE001 - bara nu e expusă sau am ajuns jos
-                pyautogui.scroll(-120 * 5, x=centru[0], y=centru[1])
-            time.sleep(0.5)
+                return False
+            time.sleep(0.4)
+            return True
 
-        def pagina_stabila():
-            """Derularea continuă puțin după rotița mouse-ului: citim până când două citiri consecutive coincid
-            (aceleași nume, la aceleași poziții), ca să nu dăm clic pe un rând care încă se mișcă."""
-            anterior, randuri = None, []
-            for _ in range(8):
-                randuri = pagina()
-                cheie = [(rand.text, rand.centru_y) for rand in randuri]
-                if cheie == anterior:
-                    return randuri
-                anterior = cheie
-                time.sleep(0.3)
-            return randuri
+        def bifeaza(nume: str, y: int) -> bool:
+            """Clic pe căsuța rândului și verificarea bifei; a doua încercare recitește pagina (rândul poate
+            să se fi mutat). O căsuță deja bifată nu se mai atinge (clicul ar debifa-o)."""
+            for incercare in (1, 2):
+                if not _bifat(x_bifa, y):
+                    pyautogui.click(x_bifa, y)
+                    time.sleep(0.5)
+                if _bifat(x_bifa, y):
+                    return True
+                log.info("Bifa pentru '%s' nu a apărut la y=%d (încercarea %d din 2)", nume, y, incercare)
+                y = next((rand.centru_y for rand in pagina() if rand.text == nume), y)
+            return False
 
-        def paginile():
-            """Paginile listei, de sus în jos, până când derularea nu mai aduce nume noi."""
-            sus()
-            anterioare = None
-            for _ in range(60):
-                randuri = pagina_stabila()
-                texte = [rand.text for rand in randuri]
-                if texte == anterioare:
-                    return
-                yield randuri
-                anterioare = texte
-                jos()
-
-        # (1) + (2)
+        ramasi = list(auditori)
         vazute: List[str] = []
-        for randuri in paginile():
-            vazute += [rand.text for rand in randuri if rand.text not in vazute]
-        log.info("Lista de utilizatori citită prin OCR: %d nume", len(vazute))
-        tinte = {}
-        for auditor in auditori:
-            p = potriveste_nume(auditor, vazute)
-            if p.gasit is None:
-                problema = f"Testul {eticheta_test}: auditorul '{auditor}' - {p.motiv}"
-                log.warning("Nu am bifat: %s", problema)
-                self.probleme_auditori.append(problema)
-            else:
+        anterioara = None
+        for _ in range(60):
+            randuri = pagina()
+            texte = [rand.text for rand in randuri]
+            if texte == anterioara:
+                break  # derularea nu mai aduce nume noi: am ajuns la capătul listei
+            anterioara = texte
+            vazute += [t for t in texte if t not in vazute]
+            for auditor in list(ramasi):
+                p = potriveste_nume(auditor, texte)
+                if p.gasit is None:
+                    continue  # nu e pe pagina asta (sau e ambiguu aici: decidem la final, pe tot ce am văzut)
+                rand = next(rand for rand in randuri if rand.text == p.gasit)
                 if p.partiala:
                     log.warning("Auditorul '%s' potrivit cu '%s' (potrivire parțială, scor %.2f) - de verificat",
                                 auditor, p.gasit, p.scor)
-                tinte[p.gasit] = auditor
-        if not tinte:
-            return
-
-        # (3)
-        def pozitia(nume):
-            """Rândul numelui pe pagina afișată acum (citită din nou, stabilă), sau None."""
-            return next((rand.centru_y for rand in pagina_stabila() if rand.text == nume), None)
-
-        bifate = set()
-        for randuri in paginile():
-            for nume in [rand.text for rand in randuri if rand.text in tinte and rand.text not in bifate]:
-                for incercare in (1, 2):
-                    y = pozitia(nume)
-                    if y is None:
-                        break
-                    if not _bifat(x_bifa, y):
-                        pyautogui.click(x_bifa, y)
-                        time.sleep(0.5)
-                    if _bifat(x_bifa, y) and pozitia(nume) == y:
-                        log.info("Auditorul '%s' bifat ca '%s'", tinte[nume], nume)
-                        bifate.add(nume)
-                        break
-                    log.info("Bifa pentru '%s' nu a apărut (încercarea %d din 2)", nume, incercare)
-            if len(bifate) == len(tinte):
+                if bifeaza(p.gasit, rand.centru_y):
+                    log.info("Auditorul '%s' bifat ca '%s'", auditor, p.gasit)
+                else:
+                    problema = f"Testul {eticheta_test}: auditorul '{auditor}' ('{p.gasit}') - clicul nu a pus bifa"
+                    log.warning("Nu am bifat: %s", problema)
+                    self.probleme_auditori.append(problema)
+                ramasi.remove(auditor)
+            if not ramasi or not urmatoarea_pagina():
                 break
-        for nume, auditor in tinte.items():
-            if nume not in bifate:
-                problema = f"Testul {eticheta_test}: auditorul '{auditor}' ('{nume}') - clicul nu a pus bifa"
-                log.warning("Nu am bifat: %s", problema)
-                self.probleme_auditori.append(problema)
+        for auditor in ramasi:
+            p = potriveste_nume(auditor, vazute)
+            problema = f"Testul {eticheta_test}: auditorul '{auditor}' - {p.motiv or 'negăsit în listă'}"
+            log.warning("Nu am bifat: %s", problema)
+            self.probleme_auditori.append(problema)
 
     def _inchide_lista_bife(self, meta, eticheta_re: str) -> None:
         keyboard.send_keys("{TAB}")  # închide lista, ca în robot
