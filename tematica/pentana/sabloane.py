@@ -707,13 +707,13 @@ class IntroducereRiscuri:
                                + "{RIGHT}" + data.strftime("%Y") + "{ENTER}")
         elif self._lista_deschisa() and self._calendar_deschis():
             # (2) calendarul Windows (SysMonthCal32): selecția se mută din tastatură și se verifică din numele lui
-            self._alege_in_calendar(data)
-            valoare = self._data_din_camp(w, meta)
-            if valoare == data:
+            # verificarea: data selectată în calendar (citită înainte de confirmare) și calendarul închis după ea
+            selectata = self._alege_in_calendar(data)
+            if selectata == data and not self._calendar_deschis():
                 log.info("Termen completat: %s", text)
             else:
-                citit = valoare.strftime("%d.%m.%Y") if valoare else "necunoscut"
-                problema = f"Testul {eticheta_test}: termenul {text} nu a fost pus (în câmp: {citit})"
+                citit = selectata.strftime("%d.%m.%Y") if selectata else "necunoscut"
+                problema = f"Testul {eticheta_test}: termenul {text} nu a fost pus (în calendar: {citit})"
                 log.warning("De verificat: %s", problema)
                 self.probleme_termen.append(problema)
             return
@@ -753,7 +753,7 @@ class IntroducereRiscuri:
         except ApplicationException:
             return False
 
-    def _alege_in_calendar(self, data) -> None:
+    def _alege_in_calendar(self, data):
         """Mută selecția calendarului pe `data` din tastatură (PageUp/PageDown = o lună, Home = prima zi a lunii,
         săgeți = o zi), verifică din numele calendarului ("08/09/2026 selected.") și confirmă alegerea."""
         app = self.app
@@ -770,7 +770,7 @@ class IntroducereRiscuri:
                 break
             zile = (data - selectata).days
             keyboard.send_keys(("{RIGHT}" if zile > 0 else "{LEFT}") * abs(zile), pause=0.03)
-        log.info("Calendar: %s", cal.window_text())
+        selectata = _data_calendar(cal.window_text())
         keyboard.send_keys("{ENTER}")
         app.pause()
         if self._calendar_deschis():
@@ -786,21 +786,7 @@ class IntroducereRiscuri:
         if self._calendar_deschis():
             keyboard.send_keys("{SPACE}")
             app.pause()
-
-    def _data_din_camp(self, camp, meta):
-        """Data rămasă în câmp: redeschidem calendarul (se deschide pe data câmpului), o citim și îl închidem."""
-        app = self.app
-        camp.click_input()
-        app.pause()
-        data = None
-        if self._calendar_deschis():
-            data = _data_calendar(app.wait(self._calendar(), timeout=2).window_text())
-            keyboard.send_keys("{ESC}")  # închide fără a schimba data
-            app.pause()
-            if self._lista_deschisa():
-                self._inchide_lista_bife(meta, r"^Termen finalizare.*")
-        return data
-
+        return selectata
 
 def _data_calendar(nume: str):
     """Data selectată din numele calendarului Windows: '08/09/2026 selected.' (zz/ll/aaaa pe acest sistem)."""
