@@ -74,3 +74,17 @@ def test_numerotare(xlsx):
 
 def test_normalizeaza_spatii():
     assert m.normalizeaza_spatii("a   b    c") == "a b c"
+
+
+def test_cap_de_tabel_nou_si_vechi(tmp_path: Path):
+    """Coloanele 'Descriere Control (Criterii)' / 'Cadru de reglementare (Criterii)'; numele vechi merg în continuare."""
+    assert m.COL_DESCRIERE_CONTROL == "Descriere Control (Criterii)"
+    assert m.COL_CADRU_CONTROL == "Cadru de reglementare (Criterii)"
+    vechi = {"Descriere Control (Criterii)": "Descriere Control",
+             "Cadru de reglementare (Criterii)": "Cadru de reglementare Control"}
+    p = tmp_path / "vechi.xlsx"
+    pd.DataFrame([_rand("P1", "A1", "", "R1")]).rename(columns=vechi).to_excel(p, sheet_name="Sheet1", index=False)
+    mat = m.citeste_matrice(p)
+    control = mat.controale.iloc[0]
+    assert control[m.COL_DESCRIERE_CONTROL] == "Descriere C1"
+    assert control[m.COL_CADRU_CONTROL] == "Regulament"

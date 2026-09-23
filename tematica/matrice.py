@@ -22,13 +22,19 @@ COL_SUBARIE = "SubArie"
 COL_DESCRIERE_RISC = "Descriere Risc"
 COL_TIP_RISC = "Tip Risc"
 COL_DENUMIRE_CONTROL = "Denumire Control"
-COL_DESCRIERE_CONTROL = "Descriere Control"
+COL_DESCRIERE_CONTROL = "Descriere Control (Criterii)"
 COL_TIP_CONTROL = "Tip Control"
 COL_FRECVENTA_CONTROL = "Frecventa Control"
-COL_CADRU_CONTROL = "Cadru de reglementare Control"
+COL_CADRU_CONTROL = "Cadru de reglementare (Criterii)"
 COL_DENUMIRE_TEST = "Denumire Test"
 COL_TEHNICI_TEST = "Tehnici de Testare"
 COL_DETALII_TEHNICI = "Detalii Tehnici de Testare"
+
+# Numele vechi ale coloanelor (matricele făcute înainte de redenumire se citesc în continuare)
+COLOANE_VECHI = {
+    "Descriere Control": COL_DESCRIERE_CONTROL,
+    "Cadru de reglementare Control": COL_CADRU_CONTROL,
+}
 
 COLOANE_OBLIGATORII = [
     COL_PROCES, COL_ARIE, COL_SUBARIE,
@@ -100,6 +106,7 @@ def citeste_matrice(cale: Union[str, Path], sheet: str = "Sheet1") -> Matrice:
     baza = pd.read_excel(cale, sheet_name=sheet, dtype=str)
     baza = baza.fillna("")
     baza.columns = [str(c).strip() for c in baza.columns]
+    baza = baza.rename(columns={v: n for v, n in COLOANE_VECHI.items() if v in baza.columns and n not in baza.columns})
     for col in baza.columns:
         baza[col] = baza[col].astype(str).str.strip()
 

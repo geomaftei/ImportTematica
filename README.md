@@ -65,7 +65,7 @@ Teste (partea de date, fără Pentana): `pytest`.
 ## Formatul matricei (Sheet1)
 
 Coloane obligatorii: `Proces`, `Arie`, `SubArie`, `Descriere Risc`, `Tip Risc`, `Denumire Control`,
-`Descriere Control`, `Tip Control`, `Frecventa Control`, `Cadru de reglementare Control`, `Denumire Test`,
+`Descriere Control (Criterii)`, `Tip Control`, `Frecventa Control`, `Cadru de reglementare (Criterii)`, `Denumire Test`,
 `Tehnici de Testare`, `Detalii Tehnici de Testare`. Un rând = un test; celelalte niveluri se deduc prin
 eliminarea duplicatelor, exact ca în robot. `SubArie` gol înseamnă că riscul este atașat direct ariei.
 
