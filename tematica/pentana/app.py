@@ -20,6 +20,7 @@ import logging
 import re
 import subprocess
 import time
+import unicodedata
 from typing import Iterable, Optional, Tuple, Union
 
 import pyperclip
@@ -363,26 +364,44 @@ class PentanaApp:
                 self.pause(0.5)
 
     def select_tree_item(self, tree_spec, name: str):
-        """Selectează un nod dintr-un TreeView după nume, expandând părinții dacă e nevoie."""
+        """Selectează un nod dintr-un TreeView după nume (tolerant la spații, majuscule, diacritice și la
+        wildcard-ul '*'), expandând părinții dacă e nevoie. Nodul poate fi în afara zonei vizibile (lista
+        deschisă derulată): îl aducem întâi la vedere, apoi dăm clic; dacă tot nu e vizibil, îl selectăm prin
+        SelectionItem, fără clic pe coordonate."""
         tree = self.wait(tree_spec)
-        for item in tree.descendants(control_type="TreeItem"):
-            if _match(name, item.window_text()):
-                _expand_ancestors(item)
-                item.click_input()
-                self.pause()
-                return item
-        # posibil nodurile nu sunt încă încărcate: expandăm tot și mai încercăm o dată
-        for item in tree.descendants(control_type="TreeItem"):
+        item = _cauta_in_arbore(tree, name)
+        if item is None:
+            # posibil nodurile nu sunt încă încărcate: expandăm tot și mai încercăm o dată
+            for it in tree.descendants(control_type="TreeItem"):
+                try:
+                    it.expand()
+                except Exception:  # noqa: BLE001
+                    pass
+            item = _cauta_in_arbore(tree, name)
+        if item is None:
+            nume = [it.window_text() for it in tree.descendants(control_type="TreeItem")[:30]]
+            raise ApplicationException(f"Nu am găsit în listă '{name}'. Primele elemente din listă: {nume}")
+        _expand_ancestors(item)
+        self._alege_element(tree, item)
+        return item
+
+    def _alege_element(self, tree, item) -> None:
+        try:
+            item.iface_scroll_item.ScrollIntoView()  # derulează lista până la element
+            self.pause(0.5)
+        except Exception as exc:  # noqa: BLE001 - elementul nu expune ScrollItem
+            log.debug("ScrollIntoView indisponibil pentru '%s': %s", item.window_text(), exc)
+        if _vizibil_in(tree, item):
+            item.click_input()
+        else:
+            log.info("'%s' nu este în zona vizibilă a listei; îl selectez fără clic", item.window_text())
+            item.select()
             try:
-                item.expand()
-            except Exception:
-                pass
-        for item in tree.descendants(control_type="TreeItem"):
-            if _match(name, item.window_text()):
-                item.click_input()
-                self.pause()
-                return item
-        raise ApplicationException(f"Nu am găsit în arbore nodul '{name}'")
+                item.set_focus()
+            except Exception:  # noqa: BLE001
+                tree.set_focus()
+        self.pause()
+        log.info("Ales din listă: %s", item.window_text())
 
     def select_tree_path(self, tree, cale: Iterable[str]):
         """Selectează nodul de la capătul căii [proces, arie, sub-arie], coborând nivel cu nivel prin copiii
@@ -508,8 +527,43 @@ def _wild(name: str) -> str:
     return "^" + ".*".join(parts) + ("" if name.endswith("*") else "$")
 
 
+def _normalizeaza(text: str) -> str:
+    """Fără diacritice, litere mici, spațiile multiple comprimate - pentru comparat nume din Excel cu cele din UI."""
+    text = unicodedata.normalize("NFKD", text or "")
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    return " ".join(text.split()).casefold()
+
+
 def _match(pattern: str, text: str) -> bool:
-    return re.match(_wild(pattern), (text or "").strip(), flags=re.IGNORECASE) is not None
+    parts = [re.escape(_normalizeaza(p)) for p in pattern.split("*")]
+    regex = "^" + ".*".join(parts) + ("" if pattern.endswith("*") else "$")
+    return re.match(regex, _normalizeaza(text)) is not None
+
+
+def _cauta_in_arbore(tree, name: str):
+    """Primul TreeItem al cărui text se potrivește cu `name`; altfel primul care începe cu `name` (textul afișat
+    poate avea un sufix, de ex. anul)."""
+    items = tree.descendants(control_type="TreeItem")
+    for item in items:
+        if _match(name, item.window_text()):
+            return item
+    if not name.endswith("*"):
+        for item in items:
+            if _match(name + "*", item.window_text()):
+                log.info("Potrivire după început: '%s' ~ '%s'", name, item.window_text())
+                return item
+    return None
+
+
+def _vizibil_in(tree, item) -> bool:
+    """Elementul este afișat în interiorul dreptunghiului listei (nu e derulat în afara ei)."""
+    try:
+        r, t = item.rectangle(), tree.rectangle()
+        mijloc_y = (r.top + r.bottom) // 2
+        return (not item.element_info.element.CurrentIsOffscreen and r.width() > 0
+                and t.top <= mijloc_y <= t.bottom and t.left <= r.left + 5 <= t.right)
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def _expand_ancestors(item) -> None:
