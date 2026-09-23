@@ -31,6 +31,9 @@ debug:
   tree_depth: 16
 
 images:
+  # false = unde robotul avea "Click Image" și avem și un selector, folosim direct selectorul (imaginile robotului
+  # nu se potrivesc la altă rezoluție / scalare a ecranului și fiecare căutare ratată costă timp).
+  enabled: false
   # Șabloanele de imagine extrase din activitățile "Click Image" ale robotului (Data/Images, vezi manifest.json).
   dir: Data/Images
   # Accuracy="0.8" în UiPath -> confidence la potrivirea imaginii pe ecran.

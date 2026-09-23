@@ -29,6 +29,9 @@ class Imagini:
         self.dir: Path = cfg.path("images.dir")
         self.confidence: float = float(cfg.get("images.confidence", 0.8))
         self.timeout: float = float(cfg.get("images.timeout_s", 10))
+        # false = unde există un selector de rezervă, se folosește direct selectorul (imaginile robotului nu se
+        # potrivesc la altă scalare a ecranului); fără rezervă imaginea se caută oricum
+        self.enabled: bool = bool(cfg.get("images.enabled", False))
 
     def cale(self, name: str) -> Path:
         p = self.dir / f"{name}.png"
@@ -39,6 +42,7 @@ class Imagini:
     def gaseste(self, names: Names, region: Optional[Region] = None, timeout: Optional[float] = None):
         """Caută (până la timeout) oricare dintre imaginile date; întoarce (nume, Box) sau None."""
         names = [names] if isinstance(names, str) else list(names)
+        region = _in_ecran(region)
         paths = [(n, str(self.cale(n))) for n in names]
         deadline = time.monotonic() + (self.timeout if timeout is None else timeout)
         while True:
@@ -66,3 +70,16 @@ class Imagini:
         log.debug("Click Image '%s' la (%d, %d)", name, x, y)
         pyautogui.click(x, y, clicks=2 if double else 1, interval=0.1)
         return int(x), int(y)
+
+
+def _in_ecran(region: Optional[Region]) -> Optional[Region]:
+    """Intersecția zonei cu ecranul principal: o fereastră maximizată raportează marginea la (-9, -9), iar captura
+    unei zone ieșite din ecran nu mai poate conține imaginea."""
+    if region is None:
+        return None
+    w, h = pyautogui.size()
+    left, top = max(0, int(region[0])), max(0, int(region[1]))
+    right, bottom = min(w, int(region[0] + region[2])), min(h, int(region[1] + region[3]))
+    if right <= left or bottom <= top:
+        return None
+    return (left, top, right - left, bottom - top)

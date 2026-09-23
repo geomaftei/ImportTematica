@@ -257,7 +257,8 @@ class IntroducereRiscuri:
         denumire = normalizeaza_spatii(control[COL_DENUMIRE_CONTROL])
         log.info("Adaugare control %s", denumire)
 
-        app.click_image("adaugare_control", within=app.main)  # [img] scope: fereastra principală
+        app.click_image("adaugare_control", within=app.main,  # [img] scope: fereastra principală
+                        fallback=app.path(self.rc_matrix, "tb_Main", "btn_AddControl"))
         app.click_menu_item("Creare control nou", keyboard_fallback=("{TAB}", "{ENTER}"))
 
         editor = app.window("ControlTemplateEditor")
@@ -326,11 +327,14 @@ class IntroducereRiscuri:
         # după filtrare rămâne o singură celulă risc x control ("in patratel")
         cell = self._celula_matrice()
         app.click(cell)
-        # [img] elementul de meniu "Creare legătură de risc/control pentru selecție"
-        try:
-            app.click_image("creare_legatura_risc_control", timeout=3)
-        except ApplicationException:
+        # "Creare legătură de risc/control pentru selecție": butonul din bara tb_Links (robotul folosea imaginea
+        # elementului de meniu); meniul contextual al celulei rămâne rezervă
+        btn = app.path(self.rc_matrix, "tb_Links", "btn_CreateRiskControlLink")
+        if app.exists(btn, timeout=3):
+            app.click(btn)
+        else:
             self._meniu_matrice("Creare legătură de risc/control pentru selecție", cell)
+        log.info("Legătura risc/control a fost creată")
 
     def _celula_matrice(self):
         return self.app.path(self.rc_matrix, "pnl_Outer", ("c_Matrix", 0))
