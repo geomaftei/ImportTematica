@@ -29,6 +29,7 @@ from pywinauto.timings import TimeoutError as PwTimeoutError
 
 from ..config import Config
 from ..exceptions import ApplicationException
+from .fastspec import FastSpec
 from .images import Imagini, Names, Region
 
 log = logging.getLogger("tematica.pentana")
@@ -161,21 +162,23 @@ class PentanaApp:
     @property
     def main(self):
         assert self.app is not None, "Aplicația nu este pornită (start()/attach())"
-        return self.app.window(auto_id=self.main_id)
+        # același obiect la fiecare apel: FastSpec își memorează fereastra găsită
+        if getattr(self, "_main_spec", None) is None or self._main_app is not self.app:
+            self._main_spec, self._main_app = FastSpec(self.app.window(auto_id=self.main_id)), self.app
+        return self._main_spec
 
     def _resolve(self, timeout: Optional[float] = None, **criteria):
         """Găsește o fereastră/un panou după criterii (auto_id=..., title=...), căutând pe rând:
         fereastră de nivel superior a procesului, fereastră pe desktop aparținând procesului (pop-up-uri),
         copil al ferestrei principale (ecranele Pentana sunt panouri în MKInsightMainUI)."""
         assert self.app is not None
+        # FastSpec: tot ce se înlănțuie din fereastra găsită (child_window, path) folosește căutarea rapidă
         candidates = [
-            self.app.window(**criteria),
-            Desktop(backend="uia").window(process=self.app.process, **criteria),
+            FastSpec(self.app.window(**criteria)),
+            FastSpec(Desktop(backend="uia").window(process=self.app.process, **criteria)),
         ]
         if criteria.get("auto_id") != self.main_id:
-            # ecranele și listele derulante sunt copii apropiați ai ferestrei principale: întâi cu adâncime
-            # limitată (rapid), apoi oriunde în fereastră (lent, scanează tot)
-            candidates.append(self.main.child_window(depth=3, **criteria))
+            # ecranele și listele derulante sunt copii apropiați ai ferestrei principale
             candidates.append(self.main.child_window(**criteria))
         # locul în care am găsit ultima dată fereastra se încearcă primul (economisește scanări)
         key = tuple(sorted(criteria.items()))
@@ -190,7 +193,7 @@ class PentanaApp:
                     if self._unde_gasit.get(key) != i:
                         log.debug("Fereastra %s găsită ca %s", criteria,
                                   ("fereastră a procesului", "fereastră pe desktop",
-                                   "copil apropiat al ferestrei principale", "descendent al ferestrei principale")[i])
+                                   "descendent al ferestrei principale")[i])
                         self._unde_gasit[key] = i
                     return candidates[i]
             if time.monotonic() >= deadline:
