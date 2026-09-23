@@ -44,13 +44,14 @@ class SalvareCopieSiguranta:
         app.wait(templates, timeout=30)
 
         # doar rândul nostru în listă: câmpul "Filtre:" de deasupra grilei
+        # (câmpul poate fi dezactivat - atunci nu filtrăm și alegem primul "In progres" din listă)
         filtru = templates.child_window(title="Filtre:", control_type="Edit")
-        if app.exists(filtru, timeout=3):
+        if self._activ(filtru):
             app.seteaza_text(filtru, nume)
             time.sleep(2)  # lista se reîmprospătează după filtrare
             log.info("Lista de șabloane filtrată după '%s'", nume)
         else:
-            log.warning("Nu am găsit câmpul 'Filtre:' al listei de șabloane; aleg primul 'In progres' din listă")
+            log.info("Câmpul 'Filtre:' al listei de șabloane nu este activ; aleg primul 'In progres' din listă")
 
         # "Copie de siguranta": clic pe starea "In progres" -> fereastra de acțiuni
         app.click_image("stare_in_progres", within=templates, timeout=10)
@@ -71,3 +72,9 @@ class SalvareCopieSiguranta:
         else:
             app.click(actiuni)  # robotul dădea al doilea clic în același container ("Confirm")
         log.info("Copia de siguranță a șablonului '%s' a fost confirmată", nume)
+
+    def _activ(self, spec) -> bool:
+        try:
+            return self.app.exists(spec, timeout=2) and spec.wrapper_object().is_enabled()
+        except Exception:  # noqa: BLE001
+            return False
