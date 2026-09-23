@@ -29,7 +29,7 @@ COL_DENUMIRE_CONTROL = "Denumire Control"
 COL_DESCRIERE_CONTROL = "Descriere Control (Criterii)"
 COL_TIP_CONTROL = "Tip Control"
 COL_FRECVENTA_CONTROL = "Frecventa Control"
-COL_CADRU_CONTROL = "Cadru de reglementare (Criterii)"
+COL_CADRU_CONTROL = "Cadru de reglementare Control (Criterii)"
 COL_DENUMIRE_TEST = "Denumire Test"
 COL_TEHNICI_TEST = "Tehnici de Testare"
 COL_DETALII_TEHNICI = "Detalii Tehnici de Testare"
@@ -38,6 +38,7 @@ COL_DETALII_TEHNICI = "Detalii Tehnici de Testare"
 COLOANE_VECHI = {
     "Descriere Control": COL_DESCRIERE_CONTROL,
     "Cadru de reglementare Control": COL_CADRU_CONTROL,
+    "Cadru de reglementare (Criterii)": COL_CADRU_CONTROL,
 }
 
 COLOANE_OBLIGATORII = [
