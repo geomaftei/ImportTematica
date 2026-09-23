@@ -688,8 +688,8 @@ class IntroducereRiscuri:
         elif self._lista_deschisa() and self._calendar_deschis():
             # (2) calendarul Windows (SysMonthCal32): selecția se mută din tastatură și se verifică din numele lui
             # verificarea: data selectată în calendar (citită înainte de confirmare) și calendarul închis după ea
-            selectata = self._alege_in_calendar(data)
-            if selectata == data and not self._calendar_deschis():
+            selectata, inchis = self._alege_in_calendar(data)
+            if selectata == data and inchis:
                 log.info("Termen completat: %s", text)
             else:
                 citit = selectata.strftime("%d.%m.%Y") if selectata else "necunoscut"
@@ -723,13 +723,14 @@ class IntroducereRiscuri:
             self.probleme_termen.append(problema)
 
 
-    def _calendar(self):
-        dd = self.app.window("DropDownComponentWindow", timeout=2)
+    def _calendar(self, timeout: float = 2):
+        dd = self.app.window("DropDownComponentWindow", timeout=timeout)
         return dd.child_window(class_name_re=r"WindowsForms10\.SysMonthCal32.*")
 
-    def _calendar_deschis(self) -> bool:
+    def _calendar_deschis(self, timeout: float = 2) -> bool:
+        """timeout = cât așteptăm să apară; după confirmare folosim o verificare scurtă (calendarul e deja închis)."""
         try:
-            return self.app.exists(self._calendar(), timeout=2)
+            return self.app.exists(self._calendar(timeout), timeout=timeout)
         except ApplicationException:
             return False
 
@@ -753,7 +754,7 @@ class IntroducereRiscuri:
         selectata = _data_calendar(cal.window_text())
         keyboard.send_keys("{ENTER}")
         app.pause()
-        if self._calendar_deschis():
+        if self._calendar_deschis(timeout=0.3):
             # Enter nu a închis calendarul: clic pe ziua selectată (alegerea cu mouse-ul o confirmă)
             for celula in cal.descendants():
                 try:
@@ -763,10 +764,10 @@ class IntroducereRiscuri:
                 except Exception:  # noqa: BLE001 - elementul nu expune SelectionItem
                     continue
             app.pause()
-        if self._calendar_deschis():
-            keyboard.send_keys("{SPACE}")
-            app.pause()
-        return selectata
+            if self._calendar_deschis(timeout=0.3):
+                keyboard.send_keys("{SPACE}")
+                app.pause()
+        return selectata, not self._calendar_deschis(timeout=0.3)
 
 def _data_calendar(nume: str):
     """Data selectată din numele calendarului Windows: '08/09/2026 selected.' (zz/ll/aaaa pe acest sistem)."""
