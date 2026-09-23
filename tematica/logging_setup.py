@@ -50,6 +50,7 @@ def setup_logging(log_dir: Path, process_name: str) -> logging.Logger:
     root.addHandler(file_handler)
     # pywinauto este foarte vorbăreț pe DEBUG
     logging.getLogger("pywinauto").setLevel(logging.WARNING)
+    logging.getLogger("asyncio").setLevel(logging.WARNING)  # "Using proactor" la fiecare citire OCR
 
     root.addHandler(_watchdog)
     _watchdog.start()

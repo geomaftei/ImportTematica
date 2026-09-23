@@ -24,6 +24,7 @@ import ctypes
 import logging
 import re
 import time
+from datetime import date
 from typing import Dict, List
 
 import pandas as pd
@@ -592,12 +593,25 @@ class IntroducereRiscuri:
                 pyautogui.scroll(-120 * 5, x=centru[0], y=centru[1])
             time.sleep(0.5)
 
+        def pagina_stabila():
+            """Derularea continuă puțin după rotița mouse-ului: citim până când două citiri consecutive coincid
+            (aceleași nume, la aceleași poziții), ca să nu dăm clic pe un rând care încă se mișcă."""
+            anterior, randuri = None, []
+            for _ in range(8):
+                randuri = pagina()
+                cheie = [(rand.text, rand.centru_y) for rand in randuri]
+                if cheie == anterior:
+                    return randuri
+                anterior = cheie
+                time.sleep(0.3)
+            return randuri
+
         def paginile():
             """Paginile listei, de sus în jos, până când derularea nu mai aduce nume noi."""
             sus()
             anterioare = None
             for _ in range(60):
-                randuri = pagina()
+                randuri = pagina_stabila()
                 texte = [rand.text for rand in randuri]
                 if texte == anterioare:
                     return
@@ -626,17 +640,25 @@ class IntroducereRiscuri:
             return
 
         # (3)
+        def pozitia(nume):
+            """Rândul numelui pe pagina afișată acum (citită din nou, stabilă), sau None."""
+            return next((rand.centru_y for rand in pagina_stabila() if rand.text == nume), None)
+
         bifate = set()
         for randuri in paginile():
-            for rand in randuri:
-                if rand.text in tinte and rand.text not in bifate:
-                    y = rand.centru_y
+            for nume in [rand.text for rand in randuri if rand.text in tinte and rand.text not in bifate]:
+                for incercare in (1, 2):
+                    y = pozitia(nume)
+                    if y is None:
+                        break
                     if not _bifat(x_bifa, y):
                         pyautogui.click(x_bifa, y)
-                        time.sleep(0.4)
-                    if _bifat(x_bifa, y):
-                        log.info("Auditorul '%s' bifat ca '%s'", tinte[rand.text], rand.text)
-                        bifate.add(rand.text)
+                        time.sleep(0.5)
+                    if _bifat(x_bifa, y) and pozitia(nume) == y:
+                        log.info("Auditorul '%s' bifat ca '%s'", tinte[nume], nume)
+                        bifate.add(nume)
+                        break
+                    log.info("Bifa pentru '%s' nu a apărut (încercarea %d din 2)", nume, incercare)
             if len(bifate) == len(tinte):
                 break
         for nume, auditor in tinte.items():
@@ -683,7 +705,19 @@ class IntroducereRiscuri:
         if "DateTimePick" in (w.element_info.class_name or ""):  # DateTimePicker: zi, lună, an pe rând
             keyboard.send_keys("{LEFT}{LEFT}{LEFT}" + data.strftime("%d") + "{RIGHT}" + data.strftime("%m")
                                + "{RIGHT}" + data.strftime("%Y") + "{ENTER}")
-        elif self._lista_deschisa():  # (2) calendarul deschis: îl scriem în log și căutăm un câmp de text
+        elif self._lista_deschisa() and self._calendar_deschis():
+            # (2) calendarul Windows (SysMonthCal32): selecția se mută din tastatură și se verifică din numele lui
+            self._alege_in_calendar(data)
+            valoare = self._data_din_camp(w, meta)
+            if valoare == data:
+                log.info("Termen completat: %s", text)
+            else:
+                citit = valoare.strftime("%d.%m.%Y") if valoare else "necunoscut"
+                problema = f"Testul {eticheta_test}: termenul {text} nu a fost pus (în câmp: {citit})"
+                log.warning("De verificat: %s", problema)
+                self.probleme_termen.append(problema)
+            return
+        elif self._lista_deschisa():  # calendar de alt tip: îl scriem în log și căutăm un câmp de text
             dd = app.window("DropDownComponentWindow", timeout=2)
             try:
                 log.debug("Calendarul termenului:\n%s", arbore_controale(dd.wrapper_object(), 8))
@@ -707,6 +741,79 @@ class IntroducereRiscuri:
             problema = f"Testul {eticheta_test}: termenul {text} nu apare în câmp (valoare citită: '{valoare}')"
             log.warning("De verificat: %s", problema)
             self.probleme_termen.append(problema)
+
+
+    def _calendar(self):
+        dd = self.app.window("DropDownComponentWindow", timeout=2)
+        return dd.child_window(class_name_re=r"WindowsForms10\.SysMonthCal32.*")
+
+    def _calendar_deschis(self) -> bool:
+        try:
+            return self.app.exists(self._calendar(), timeout=2)
+        except ApplicationException:
+            return False
+
+    def _alege_in_calendar(self, data) -> None:
+        """Mută selecția calendarului pe `data` din tastatură (PageUp/PageDown = o lună, Home = prima zi a lunii,
+        săgeți = o zi), verifică din numele calendarului ("08/09/2026 selected.") și confirmă alegerea."""
+        app = self.app
+        cal = app.wait(self._calendar(), timeout=3)
+        curenta = _data_calendar(cal.window_text()) or date.today()
+        cal.set_focus()
+        luni = (data.year - curenta.year) * 12 + data.month - curenta.month
+        taste = ("{PGDN}" if luni > 0 else "{PGUP}") * abs(luni) + "{HOME}" + "{RIGHT}" * (data.day - 1)
+        keyboard.send_keys(taste, pause=0.03)
+        for _ in range(3):  # corecție: dacă Home nu a dus la prima zi, ajustăm cu săgețile
+            app.pause(0.5)
+            selectata = _data_calendar(cal.window_text())
+            if selectata is None or selectata == data:
+                break
+            zile = (data - selectata).days
+            keyboard.send_keys(("{RIGHT}" if zile > 0 else "{LEFT}") * abs(zile), pause=0.03)
+        log.info("Calendar: %s", cal.window_text())
+        keyboard.send_keys("{ENTER}")
+        app.pause()
+        if self._calendar_deschis():
+            # Enter nu a închis calendarul: clic pe ziua selectată (alegerea cu mouse-ul o confirmă)
+            for celula in cal.descendants():
+                try:
+                    if celula.is_selected():
+                        celula.click_input()
+                        break
+                except Exception:  # noqa: BLE001 - elementul nu expune SelectionItem
+                    continue
+            app.pause()
+        if self._calendar_deschis():
+            keyboard.send_keys("{SPACE}")
+            app.pause()
+
+    def _data_din_camp(self, camp, meta):
+        """Data rămasă în câmp: redeschidem calendarul (se deschide pe data câmpului), o citim și îl închidem."""
+        app = self.app
+        camp.click_input()
+        app.pause()
+        data = None
+        if self._calendar_deschis():
+            data = _data_calendar(app.wait(self._calendar(), timeout=2).window_text())
+            keyboard.send_keys("{ESC}")  # închide fără a schimba data
+            app.pause()
+            if self._lista_deschisa():
+                self._inchide_lista_bife(meta, r"^Termen finalizare.*")
+        return data
+
+
+def _data_calendar(nume: str):
+    """Data selectată din numele calendarului Windows: '08/09/2026 selected.' (zz/ll/aaaa pe acest sistem)."""
+    m = re.search(r"(\d{1,2})[/.](\d{1,2})[/.](\d{4})", nume or "")
+    if not m:
+        return None
+    a, b, an = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    for zi, luna in ((a, b), (b, a)):
+        try:
+            return date(an, luna, zi)
+        except ValueError:
+            continue
+    return None
 
 
 def _antet_grup(text: str) -> bool:
