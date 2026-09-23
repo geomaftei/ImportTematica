@@ -30,7 +30,7 @@ from pywinauto.timings import TimeoutError as PwTimeoutError
 
 from ..config import Config
 from ..exceptions import ApplicationException
-from .fastspec import FastSpec
+from .fastspec import FastSpec, copii_cu_nume, wrap
 from .images import Imagini, Names, Region
 
 log = logging.getLogger("tematica.pentana")
@@ -388,7 +388,7 @@ class PentanaApp:
     def _alege_element(self, tree, item) -> None:
         try:
             item.iface_scroll_item.ScrollIntoView()  # derulează lista până la element
-            self.pause(0.5)
+            time.sleep(1)  # lista are nevoie de ~1 s să încarce ce s-a derulat
         except Exception as exc:  # noqa: BLE001 - elementul nu expune ScrollItem
             log.debug("ScrollIntoView indisponibil pentru '%s': %s", item.window_text(), exc)
         if _vizibil_in(tree, item):
@@ -403,29 +403,36 @@ class PentanaApp:
         self.pause()
         log.info("Ales din listă: %s", item.window_text())
 
-    def select_tree_path(self, tree, cale: Iterable[str]):
-        """Selectează nodul de la capătul căii [proces, arie, sub-arie], coborând nivel cu nivel prin copiii
-        fiecărui nod (nu enumerăm tot arborele, care are sute de noduri)."""
-        nod = tree.wrapper_object() if hasattr(tree, "wrapper_object") else tree
+    def select_tree_path(self, tree, cale: Iterable[str], asteptare_copii: float = 5):
+        """Selectează nodul de la capătul căii [proces, arie, sub-arie], coborând nivel cu nivel: fiecare nume se
+        caută doar printre copiii direcți ai nodului anterior (un singur apel UIA pe nivel), nu în tot arborele.
+        După expandare copiii pot apărea cu întârziere, deci îi mai citim până la `asteptare_copii` secunde."""
+        cale = list(cale)
+        radacina = tree.wrapper_object() if hasattr(tree, "wrapper_object") else tree
+        nod = radacina
         for nume in cale:
-            try:
-                if nod.element_info.control_type == "TreeItem" and not nod.is_expanded():
-                    log.debug("Expandez nodul '%s'", nod.window_text())
-                    nod.expand()
-            except Exception:  # noqa: BLE001
-                pass
-            log.debug("Citesc copiii nodului '%s' ca să găsesc '%s'", nod.window_text() or "rădăcină", nume)
-            copii = [c for c in nod.children() if c.element_info.control_type == "TreeItem"]
-            log.debug("%d copii citiți", len(copii))
-            urmator = next((c for c in copii if _match(nume, c.window_text())), None)
-            if urmator is None:
+            if nod is not radacina:
+                try:
+                    if not nod.is_expanded():
+                        nod.expand()
+                except Exception:  # noqa: BLE001 - nodul nu expune ExpandCollapse
+                    pass
+            deadline = time.monotonic() + asteptare_copii
+            while True:
+                copii = copii_cu_nume(nod)
+                gasit = next((el for el, n in copii if _match(nume, n)), None)
+                if gasit is None and not nume.endswith("*"):
+                    gasit = next((el for el, n in copii if _match(nume + "*", n)), None)
+                if gasit is not None or time.monotonic() >= deadline:
+                    break
+                time.sleep(0.3)
+            if gasit is None:
                 raise ApplicationException(
-                    f"Nu am găsit nodul '{nume}' sub '{nod.window_text() or 'rădăcină'}'; "
-                    f"copii: {[c.window_text() for c in copii[:12]]}"
+                    f"Nu am găsit '{nume}' sub '{nod.window_text() or 'rădăcina listei'}'; "
+                    f"copii: {[n for _, n in copii[:15]]}"
                 )
-            nod = urmator
-        nod.click_input()
-        self.pause()
+            nod = wrap(gasit)
+        self._alege_element(radacina, nod)
         log.info("Selectat în arbore: %s", " > ".join(cale))
         return nod
 

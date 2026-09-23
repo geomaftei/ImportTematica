@@ -52,7 +52,7 @@ framework:
   # true = sare peste crearea Universului de procese (procese / arii / sub-arii): pornește aplicația și trece direct
   # la crearea șablonului. Util când Universul a fost deja introdus la o rulare anterioară.
   # (Opțiunea --only din linia de comandă are prioritate.)
-  sari_peste_univers: false
+  sari_peste_univers: true
 
 credentials:
   # Asset-ul Orchestrator "AuditIntroducereTematica" -> variabilele de mediu PENTANA_USER / PENTANA_PASSWORD

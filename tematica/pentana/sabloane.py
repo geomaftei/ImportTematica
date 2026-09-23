@@ -21,7 +21,7 @@ logică cu alt filtru); aici este o singură implementare, `_proceseaza_nod`.
 from __future__ import annotations
 
 import logging
-from typing import Dict
+from typing import Dict, List
 
 import pandas as pd
 from pywinauto import keyboard
@@ -103,13 +103,13 @@ class IntroducereRiscuri:
         log.info("WorkFlow-ul Introducere Riscuri / Controale / Teste a pornit")
         self.creeaza_sablon()
         for proces in self.matrice.procese:
-            self.selecteaza_in_arbore(self.prefix + proces)
-            log.info("A fost selectat procesul %s", proces)
+            nume_proces = self.prefix + proces
             for arie in self.matrice.arii_pentru(proces):
-                self.selecteaza_in_arbore(arie)
+                # aria se caută doar sub procesul nostru, sub-aria doar sub aria noastră
+                self.selecteaza_in_arbore([nume_proces, arie])
                 self._proceseaza_nod(proces, arie, "")
                 for subarie in self.matrice.subarii_pentru(proces, arie):
-                    self.selecteaza_in_arbore(subarie)
+                    self.selecteaza_in_arbore([nume_proces, arie, subarie])
                     self._proceseaza_nod(proces, arie, subarie)
 
     def _proceseaza_nod(self, proces: str, arie: str, subarie: str) -> None:
@@ -196,11 +196,12 @@ class IntroducereRiscuri:
                                    "Ferestre deschise:\n" + app.dump_windows())
 
     # --- arborele de procese ---------------------------------------------
-    def selecteaza_in_arbore(self, nume: str) -> None:
+    def selecteaza_in_arbore(self, cale: List[str]) -> None:
         """"Click Tree pt a selecta procesul/aria/subaria".
 
-        Robotul deschidea lista și apăsa săgeata dreapta de 1-2 ori (navigare pozițională); aici alegem nodul după
-        nume în ProcessUniverseSelectionTree, apoi confirmăm cu Enter.
+        Robotul deschidea lista și apăsa săgeata dreapta de 1-2 ori (navigare pozițională); aici coborâm pe cale:
+        procesul printre nodurile de pe primul nivel, aria printre copiii procesului, sub-aria printre copiii ariei,
+        apoi confirmăm cu Enter.
         """
         app = self.app
         dd = None
@@ -215,7 +216,7 @@ class IntroducereRiscuri:
         if dd is None:
             raise ApplicationException("Lista de procese (pb_EditInclusion) nu s-a deschis după 3 clicuri")
         tree = app.path(dd, "pnl_Content", "ProcessUniverseSelectionTree", "tv_Processes")
-        app.select_tree_item(tree, nume)
+        app.select_tree_path(app.wait(tree), cale)
         keyboard.send_keys("{ENTER}")
         app.pause()
         try:

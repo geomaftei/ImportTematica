@@ -155,6 +155,19 @@ def arbore_controale(root, depth: int = 8) -> str:
     return "\n".join(linii)
 
 
+def copii_cu_nume(parinte, control_type: Optional[str] = "TreeItem"):
+    """Copiii direcți ai unui element, cu numele lor, dintr-un singur apel UIA: [(IUIAutomationElement, nume)].
+    Mult mai rapid decât wrapper.children() pe liste cu sute de noduri."""
+    u = IUIA()
+    arr = _element(parinte).FindAllBuildCache(u.tree_scope["children"], u.true_condition, _cache_request())
+    rezultat = []
+    for i in range(arr.Length):
+        c = arr.GetElement(i)
+        if control_type is None or IUIA().known_control_type_ids.get(c.CachedControlType) == control_type:
+            rezultat.append((c, c.CachedName or ""))
+    return rezultat
+
+
 class FastSpec:
     """Selector leneș: se rezolvă abia la wait()/exists()/wrapper_object(), de fiecare dată din nou (elementele
     WinForms pot fi recreate). `parent` poate fi alt FastSpec, un WindowSpecification pywinauto sau un wrapper."""
