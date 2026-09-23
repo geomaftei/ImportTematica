@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import ctypes
 import logging
+import re
 import time
 from typing import Dict, List
 
@@ -33,9 +34,11 @@ from ..config import Config
 from ..exceptions import ApplicationException
 from ..matrice import (
     COL_CADRU_CONTROL, COL_DENUMIRE_CONTROL, COL_DENUMIRE_TEST, COL_DESCRIERE_CONTROL, COL_DESCRIERE_RISC,
-    COL_COD_APR, COL_DETALII_TEHNICI, COL_FRECVENTA_CONTROL, COL_TEHNICI_TEST, COL_TIP_RISC, Matrice, normalizeaza_spatii,
+    COL_AUDITOR, COL_COD_APR, COL_DETALII_TEHNICI, COL_TERMEN, COL_FRECVENTA_CONTROL, COL_TEHNICI_TEST, COL_TIP_RISC, Matrice, normalizeaza_spatii,
 )
+from ..nume_date import imparte_auditori, parseaza_data, potriveste_nume
 from .app import PentanaApp
+from .fastspec import arbore_controale
 
 log = logging.getLogger("tematica.pentana.sabloane")
 
@@ -78,6 +81,8 @@ class IntroducereRiscuri:
         self.cfg = cfg
         self.matrice = matrice
         self.prefix = str(cfg.get("pentana.process_name_prefix", "") or "")
+        self.probleme_auditori: List[str] = []
+        self.probleme_termen: List[str] = []
 
     # --- selectori -----------------------------------------------------
     @property
@@ -114,6 +119,19 @@ class IntroducereRiscuri:
                 for subarie in self.matrice.subarii_pentru(proces, arie):
                     self.selecteaza_in_arbore([nume_proces, arie, subarie])
                     self._proceseaza_nod(proces, arie, subarie)
+        self._rezumat()
+
+    def _rezumat(self) -> None:
+        if self.probleme_auditori:
+            log.warning("Auditori alocați - %d probleme (bifele de mai jos NU au fost puse):\n  %s",
+                        len(self.probleme_auditori), "\n  ".join(self.probleme_auditori))
+        else:
+            log.info("Auditori alocați: totul OK - toți auditorii din matrice au fost găsiți și bifați")
+        if self.probleme_termen:
+            log.warning("Termen finalizare test - %d probleme:\n  %s",
+                        len(self.probleme_termen), "\n  ".join(self.probleme_termen))
+        else:
+            log.info("Termen finalizare test: totul OK")
 
     def _proceseaza_nod(self, proces: str, arie: str, subarie: str) -> None:
         for _, risc in self.matrice.riscuri_pentru(proces, arie, subarie).iterrows():
@@ -473,6 +491,12 @@ class IntroducereRiscuri:
         app.paste_into(_camp_text(meta, "^Detalii tehnici de testare.*"),
                        normalizeaza_spatii(test[COL_DETALII_TEHNICI]))
 
+        # tot pe tab-ul tehnicilor, de sus în jos: ResponsabilTest, Termen finalizare test, CodApr
+        cod_test = normalizeaza_spatii(test.get(COL_COD_APR, ""))
+        eticheta_test = f"'{denumire[:70]}'" + (f" (CodApr {cod_test})" if cod_test else "")
+        self._bifeaza_auditori(meta, test.get(COL_AUDITOR, ""), eticheta_test)
+        self._completeaza_termen(meta, test.get(COL_TERMEN, ""), eticheta_test)
+
         # "Cod referinta APR (Nr. Crt.)" din matrice -> câmpul de lângă eticheta "CodApr:" (tot pe tab-ul tehnicilor)
         cod = normalizeaza_spatii(test.get(COL_COD_APR, ""))
         if cod:
@@ -481,6 +505,130 @@ class IntroducereRiscuri:
         else:
             log.info("Testul nu are Cod referinta APR; câmpul CodApr rămâne gol")
         app.click_ok(editor)
+
+
+    # --- auditori alocați / termen --------------------------------------------
+    def _bifeaza_auditori(self, meta, celula: str, eticheta_test: str) -> None:
+        """"Auditor alocat" -> lista "ResponsabilTest:" (cu bife). Numele din Excel se potrivesc tolerant cu cele
+        din listă; ce nu se găsește sigur (negăsit / ambiguu) NU se bifează și se raportează în log."""
+        app = self.app
+        auditori = imparte_auditori(celula)
+        if not auditori:
+            log.info("Testul %s nu are auditori alocați în matrice", eticheta_test)
+            return
+        app.click(_camp_nu_eticheta(meta, r"^Responsabil.*"))
+        dd = app.window("DropDownComponentWindow", timeout=5)
+        lista = None
+        for control in ("DataListTreeControl", "MultiLevelListTreeControl"):
+            spec = app.path(dd, "pnl_Content", control, "tv_Items")
+            if app.exists(spec, timeout=1):
+                lista = spec
+                break
+        if lista is None:
+            try:
+                log.warning("Lista ResponsabilTest are altă structură:\n%s", arbore_controale(dd.wrapper_object(), 8))
+            except Exception:  # noqa: BLE001
+                pass
+            raise ApplicationException("Nu am găsit lista de auditori (ResponsabilTest) în fereastra deschisă")
+        nume_lista = [it.window_text() for it in app.wait(lista).descendants(control_type="TreeItem")]
+        log.debug("Auditori în lista ResponsabilTest: %s", nume_lista)
+
+        for auditor in auditori:
+            p = potriveste_nume(auditor, nume_lista)
+            if p.gasit is None:
+                problema = f"Testul {eticheta_test}: auditorul '{auditor}' - {p.motiv}"
+                log.warning("Nu am bifat: %s", problema)
+                self.probleme_auditori.append(problema)
+                continue
+            if p.partiala:
+                log.warning("Auditorul '%s' bifat ca '%s' (potrivire parțială, scor %.2f) - de verificat",
+                            auditor, p.gasit, p.scor)
+            else:
+                log.info("Auditorul '%s' bifat ca '%s'", auditor, p.gasit)
+            app.bifeaza_element(lista, p.gasit)
+        self._inchide_lista_bife(meta, r"^Responsabil.*")
+
+    def _inchide_lista_bife(self, meta, eticheta_re: str) -> None:
+        keyboard.send_keys("{TAB}")  # închide lista, ca în robot
+        self.app.pause()
+        if self._lista_deschisa():
+            self.app.click(meta.child_window(title_re=eticheta_re, class_name_re=r"WindowsForms10\.STATIC.*"))
+
+    def _completeaza_termen(self, meta, celula: str, eticheta_test: str) -> None:
+        """"Termen finalizare test": câmp de tip calendar. Încercăm, în ordine, (1) valoarea scrisă direct,
+        (2) textul în calendarul care se deschide la clic, (3) tastarea datei; la final verificăm câmpul."""
+        try:
+            data = parseaza_data(celula)
+        except ValueError as exc:
+            problema = f"Testul {eticheta_test}: {exc}"
+            log.warning("Termen necompletat: %s", problema)
+            self.probleme_termen.append(problema)
+            return
+        if data is None:
+            log.info("Testul %s nu are termen de finalizare în matrice", eticheta_test)
+            return
+        app = self.app
+        text = data.strftime("%d.%m.%Y")
+        w = app.wait(_camp_nu_eticheta(meta, r"^Termen finalizare.*"))
+        log.info("Termen finalizare test: %s (câmp %s)", text, w.element_info.class_name)
+
+        try:  # (1) ValuePattern
+            w.iface_value.SetValue(text)
+            app.pause()
+            if _are_data(_valoare(w), data):
+                log.info("Termen completat direct: %s", _valoare(w))
+                return
+        except Exception:  # noqa: BLE001 - câmpul nu expune ValuePattern
+            pass
+
+        w.click_input()
+        app.pause()
+        if "DateTimePick" in (w.element_info.class_name or ""):  # DateTimePicker: zi, lună, an pe rând
+            keyboard.send_keys("{LEFT}{LEFT}{LEFT}" + data.strftime("%d") + "{RIGHT}" + data.strftime("%m")
+                               + "{RIGHT}" + data.strftime("%Y") + "{ENTER}")
+        elif self._lista_deschisa():  # (2) calendarul deschis: îl scriem în log și căutăm un câmp de text
+            dd = app.window("DropDownComponentWindow", timeout=2)
+            try:
+                log.debug("Calendarul termenului:\n%s", arbore_controale(dd.wrapper_object(), 8))
+            except Exception:  # noqa: BLE001
+                pass
+            edit = dd.child_window(control_type="Edit")
+            if app.exists(edit, timeout=1):
+                app.seteaza_text(edit, text)
+                keyboard.send_keys("{ENTER}")
+            else:
+                keyboard.send_keys(text + "{ENTER}")
+        else:  # (3) tastăm data în câmp
+            keyboard.send_keys("^a" + text + "{ENTER}")
+        app.pause()
+        if self._lista_deschisa():
+            self._inchide_lista_bife(meta, r"^Termen finalizare.*")
+        valoare = _valoare(w)
+        if _are_data(valoare, data):
+            log.info("Termen completat: %s", valoare)
+        else:
+            problema = f"Testul {eticheta_test}: termenul {text} nu apare în câmp (valoare citită: '{valoare}')"
+            log.warning("De verificat: %s", problema)
+            self.probleme_termen.append(problema)
+
+
+def _valoare(w) -> str:
+    """Textul afișat de un câmp: ValuePattern, apoi valoarea MSAA, apoi textele controlului."""
+    for citire in (lambda: w.iface_value.CurrentValue, lambda: w.legacy_properties().get("Value", ""),
+                   lambda: " ".join(t for t in w.texts() if t)):
+        try:
+            v = citire()
+            if v:
+                return str(v)
+        except Exception:  # noqa: BLE001
+            pass
+    return ""
+
+
+def _are_data(valoare: str, data) -> bool:
+    """Valoarea afișată conține ziua, luna și anul datei (în orice ordine / separator: 31.10.2026, 10/31/2026)."""
+    numere = [int(n) for n in re.findall(r"\d+", valoare or "")]
+    return data.day in numere and data.month in numere and (data.year in numere or data.year % 100 in numere)
 
 
 def _camp_lista(meta, eticheta: str):

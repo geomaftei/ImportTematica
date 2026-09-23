@@ -67,7 +67,10 @@ Teste (partea de date, fără Pentana): `pytest`.
 Coloane obligatorii: `Cod referinta APR (Nr. Crt.)` (prima coloană; se scrie la fiecare test, în câmpul `CodApr:` de pe
 tab-ul „Tehnici De Testare”), `Proces`, `Arie`, `SubArie`, `Descriere Risc`, `Tip Risc`, `Denumire Control`,
 `Descriere Control (Criterii)`, `Tip Control`, `Frecventa Control`, `Cadru de reglementare Control (Criterii)`, `Denumire Test`,
-`Tehnici de Testare`, `Detalii Tehnici de Testare`. Un rând = un test; celelalte niveluri se deduc prin
+`Tehnici de Testare`, `Detalii Tehnici de Testare`, `Auditor alocat`, `Termen finalizare test` (ultimele două
+se completează la fiecare test pe tab-ul „Tehnici De Testare”: auditorii se bifează în lista `ResponsabilTest:` -
+numele se potrivesc tolerant, iar cele negăsite sau ambigue sunt raportate în log -, iar termenul, de forma
+zz.ll.aaaa, se pune în câmpul-calendar `Termen finalizare test`). Un rând = un test; celelalte niveluri se deduc prin
 eliminarea duplicatelor, exact ca în robot. `SubArie` gol înseamnă că riscul este atașat direct ariei.
 
 ## Ce trebuie verificat pe aplicația reală

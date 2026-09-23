@@ -17,6 +17,7 @@ def _rand(proces, arie, subarie, risc, tip_risc="Risc operational", control="C1"
         m.COL_TIP_CONTROL: "Preventiv", m.COL_FRECVENTA_CONTROL: "Lunar", m.COL_CADRU_CONTROL: "Regulament",
         m.COL_DENUMIRE_TEST: test, m.COL_TEHNICI_TEST: "Interviul; Observarea",
         m.COL_DETALII_TEHNICI: "Detalii",
+        m.COL_AUDITOR: "Popescu Ion", m.COL_TERMEN: "31.10.2026",
     }
 
 
@@ -105,3 +106,17 @@ def test_fara_cod_apr(tmp_path: Path):
                                                                                        index=False)
     mat = m.citeste_matrice(p)
     assert mat.teste[m.COL_COD_APR].tolist() == [""]
+
+
+def test_auditor_si_termen_la_teste(xlsx):
+    mat = m.citeste_matrice(xlsx)
+    assert mat.teste[m.COL_AUDITOR].tolist()[0] == "Popescu Ion"
+    assert mat.teste[m.COL_TERMEN].tolist()[0] == "31.10.2026"
+
+
+def test_fara_auditor_si_termen(tmp_path: Path):
+    p = tmp_path / "vechi.xlsx"
+    pd.DataFrame([_rand("P1", "A1", "", "R1")]).drop(columns=[m.COL_AUDITOR, m.COL_TERMEN]).to_excel(
+        p, sheet_name="Sheet1", index=False)
+    mat = m.citeste_matrice(p)
+    assert mat.teste[m.COL_AUDITOR].tolist() == [""] and mat.teste[m.COL_TERMEN].tolist() == [""]

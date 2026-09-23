@@ -20,6 +20,7 @@ from .config import Config
 from .exceptions import BusinessRuleException
 from .logging_setup import context as log_context
 from .matrice import Matrice, citeste_matrice
+from .nume_date import imparte_auditori, parseaza_data
 
 log = logging.getLogger("tematica.framework")
 
@@ -79,6 +80,10 @@ class Framework:
                     cod = test.get("Cod referinta APR (Nr. Crt.)", "")
                     print(f"{indent}    TEST {test['Denumire Test']}  ({test['Tehnici de Testare']})"
                           + (f"  [CodApr {cod}]" if cod else ""))
+                    auditori, termen = test.get("Auditor alocat", ""), test.get("Termen finalizare test", "")
+                    if auditori or termen:
+                        print(f"{indent}      auditori: {'; '.join(imparte_auditori(auditori)) or '-'}"
+                              f"   termen: {_data_text(termen)}")
 
     # ------------------------------------------------------------ Main loop
     def run(self, fisier: Optional[Path] = None) -> int:
@@ -190,3 +195,11 @@ class Framework:
 
             PentanaApp.kill()
         self.app = None
+
+
+def _data_text(termen: str) -> str:
+    try:
+        d = parseaza_data(termen)
+    except ValueError:
+        return f"{termen} (NU este o dată validă)"
+    return d.strftime("%d.%m.%Y") if d else "-"

@@ -21,6 +21,7 @@ def rand(proces, arie, subarie, risc, tip_risc, control, frecventa, test, tehnic
         m.COL_TIP_CONTROL: "Preventiv", m.COL_FRECVENTA_CONTROL: frecventa,
         m.COL_CADRU_CONTROL: "Regulament intern",
         m.COL_DENUMIRE_TEST: test, m.COL_TEHNICI_TEST: tehnici, m.COL_DETALII_TEHNICI: f"Detalii {test}",
+        m.COL_AUDITOR: "Popescu Ion; Ionescu Ana", m.COL_TERMEN: "31.10.2026",
     })
 
 
