@@ -186,13 +186,16 @@ class IntroducereRiscuri:
         ar apăsa butonul implicit (OK) al editorului."""
         app = self.app
         keyboard.send_keys("{ENTER}")
-        app.pause()
-        if not self._lista_deschisa():
+        if self._lista_inchisa(0.3):
             return
         log.info("Lista a rămas deschisă după Enter; o închid cu un clic lângă ea")
         app.click(neutru)
-        if self._lista_deschisa():
+        if not self._lista_inchisa(1):
             raise ApplicationException("Lista derulantă nu s-a închis nici după clicul în afara ei")
+
+    def _lista_inchisa(self, timeout: float = 0.5) -> bool:
+        """Lista derulantă s-a închis (returnează imediat ce a dispărut; False dacă e încă deschisă după timeout)."""
+        return self.app.fereastra_inchisa("DropDownComponentWindow", timeout)
 
     def _lista_deschisa(self) -> bool:
         """Lista derulantă e încă deschisă (verificare scurtă: se folosește după ce am închis-o)."""
@@ -390,7 +393,7 @@ class IntroducereRiscuri:
                 return
             except ApplicationException as exc:
                 log.warning("Filtrele risc/control nu s-au putut completa (încercarea %d din 3): %s", incercare, exc)
-                if self._lista_deschisa():
+                if not self._lista_inchisa(0):
                     keyboard.send_keys("{ESC}")  # închidem lista pe jumătate completată și o luăm de la capăt
                 app.pause(2)
         raise ApplicationException("Nu am reușit să aplic filtrele risc/control după 3 încercări")
@@ -479,11 +482,7 @@ class IntroducereRiscuri:
         for cuvant, element in TEHNICI_TESTARE.items():
             if cuvant in tehnici:
                 app.bifeaza_element(lista, element)
-        keyboard.send_keys("{TAB}")  # închide lista, ca în robot
-        app.pause()
-        if self._lista_deschisa():
-            log.info("Lista tehnicilor a rămas deschisă după TAB; o închid cu un clic pe etichetă")
-            app.click(meta.child_window(title="Tehnici de testare control:", class_name_re=r"WindowsForms10\.STATIC.*"))
+        self._inchide_lista_bife(meta, r"^Tehnici de testare control.*")
 
         log.info("Scriu Detalii Tehnici de Testare: %s", test[COL_DETALII_TEHNICI])
         app.paste_into(_camp_text(meta, "^Detalii tehnici de testare.*"),
@@ -643,10 +642,11 @@ class IntroducereRiscuri:
             self.probleme_auditori.append(problema)
 
     def _inchide_lista_bife(self, meta, eticheta_re: str) -> None:
-        keyboard.send_keys("{TAB}")  # închide lista, ca în robot
-        self.app.pause()
-        if self._lista_deschisa():
-            self.app.click(meta.child_window(title_re=eticheta_re, class_name_re=r"WindowsForms10\.STATIC.*"))
+        """Închide lista cu bife printr-un clic pe eticheta câmpului (bifele rămân). Robotul apăsa TAB, dar în
+        Pentana TAB nu închide lista - se pierdea timp așteptând."""
+        self.app.click(meta.child_window(title_re=eticheta_re, class_name_re=r"WindowsForms10\.STATIC.*"))
+        if not self._lista_inchisa(1):
+            log.warning("Lista de lângă '%s' nu s-a închis după clicul pe etichetă", eticheta_re)
 
     def _completeaza_termen(self, meta, celula: str, eticheta_test: str) -> None:
         """"Termen finalizare test": câmp de tip calendar. Încercăm, în ordine, (1) valoarea scrisă direct,
@@ -706,8 +706,7 @@ class IntroducereRiscuri:
                 keyboard.send_keys(text + "{ENTER}")
         else:  # (3) tastăm data în câmp
             keyboard.send_keys("^a" + text + "{ENTER}")
-        app.pause()
-        if self._lista_deschisa():
+        if not self._lista_inchisa(0.5):
             self._inchide_lista_bife(meta, r"^Termen finalizare.*")
         valoare = _valoare(w)
         if _are_data(valoare, data):
@@ -750,8 +749,7 @@ class IntroducereRiscuri:
             keyboard.send_keys(("{RIGHT}" if zile > 0 else "{LEFT}") * abs(zile), pause=0.03)
         selectata = _data_calendar(cal.window_text())
         keyboard.send_keys("{ENTER}")
-        app.pause()
-        if self._calendar_deschis(timeout=0.3):
+        if not self._lista_inchisa(0.5):
             # Enter nu a închis calendarul: clic pe ziua selectată (alegerea cu mouse-ul o confirmă)
             for celula in cal.descendants():
                 try:
@@ -760,11 +758,10 @@ class IntroducereRiscuri:
                         break
                 except Exception:  # noqa: BLE001 - elementul nu expune SelectionItem
                     continue
-            app.pause()
-            if self._calendar_deschis(timeout=0.3):
+            if not self._lista_inchisa(0.5):
                 keyboard.send_keys("{SPACE}")
-                app.pause()
-        return selectata, not self._calendar_deschis(timeout=0.3)
+            return selectata, self._lista_inchisa(0.5)
+        return selectata, True
 
 def _data_calendar(nume: str):
     """Data selectată din numele calendarului Windows: '08/09/2026 selected.' (zz/ll/aaaa pe acest sistem)."""

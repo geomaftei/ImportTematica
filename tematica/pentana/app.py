@@ -209,6 +209,19 @@ class PentanaApp:
         """O fereastră a aplicației după auto_id (editoare, DropDownComponentWindow, ConfigurationScreen...)."""
         return self._resolve(timeout, auto_id=auto_id)
 
+    def fereastra_inchisa(self, auto_id: str, timeout: float = 0.5) -> bool:
+        """Așteaptă să dispară fereastra: întoarce True imediat ce nu mai există (verificări repetate, rapide),
+        False dacă e încă deschisă după `timeout`. Pentru "s-a închis lista?" - nu așteaptă degeaba."""
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                self._resolve(0, diagnostic=False, auto_id=auto_id)
+            except ApplicationException:
+                return True
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(0.05)
+
     def fereastra_deschisa(self, auto_id: str, timeout: float = 0.3) -> bool:
         """Verificare rapidă, fără diagnostic la lipsă (ex. "s-a închis lista derulantă?")."""
         try:
