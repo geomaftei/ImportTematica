@@ -15,7 +15,7 @@ pentana:
   action_delay_s: 0.4
   # Entitatea aleasă la "Selectati legaturi" când se creează șablonul.
   entity_link: Banca Transilvania - Procese
-  template_name: Tematica Import Aplicatie
+  template_name: "! Tematica Import Aplicatie"
   audit_type: Asigurare
   # În UiPath, înainte de numele fiecărui proces se tasta "1" (activitatea "Adauga '1' inaintea numelui de Proces").
   # Lasă gol dacă nu vrei prefixul.

@@ -68,13 +68,15 @@ class SalvareCopieSiguranta:
         except Exception:  # noqa: BLE001 - doar diagnostic
             pass
 
-        actiuni = app.path(dd, "pnl_Content", "UserActionsLayoutContainer", "c_ActionSelect")
-        app.click(actiuni)
-        confirm = dd.child_window(title_re="^Confirm.*", control_type="Button")
-        if app.exists(confirm, timeout=3):
-            app.click(confirm)
+        # "Acțiuni Șablon": Deschidere șablon / Returnare la recenzant / Copie de siguranță securizată -
+        # alegem ultima după nume (UIA); dacă elementul nu e expus, după imaginea textului (decupată la 125%)
+        actiune = dd.child_window(title_re=r"^Copie de siguran.. securizat.*")
+        if app.exists(actiune, timeout=2):
+            app.click(actiune)
         else:
-            app.click(actiuni)  # robotul dădea al doilea clic în același container ("Confirm")
+            app.click_image("copie_siguranta_securizata", within=dd, timeout=5)
+        log.info("Am ales acțiunea 'Copie de siguranță securizată'")
+        self._confirma()
         log.info("Copia de siguranță a șablonului '%s' a fost confirmată", nume)
 
     def _activ(self, spec) -> bool:
@@ -82,3 +84,15 @@ class SalvareCopieSiguranta:
             return self.app.exists(spec, timeout=2) and spec.wrapper_object().is_enabled()
         except Exception:  # noqa: BLE001
             return False
+
+    def _confirma(self) -> None:
+        """Dacă Pentana cere confirmare după acțiune, apăsăm butonul de confirmare (Confirm / Da / OK)."""
+        app = self.app
+        buton = app.main.child_window(title_re=r"^(Confirm.*|Da|Yes|OK)$", control_type="Button")
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            if app.exists(buton, timeout=0.5):
+                log.info("Confirm acțiunea: %s", buton.window_text())
+                app.click(buton)
+                return
+        log.info("Nu a fost cerută nicio confirmare")
