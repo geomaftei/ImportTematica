@@ -46,7 +46,8 @@ def setup_logging(log_dir: Path, process_name: str) -> logging.Logger:
     file_handler.setFormatter(fmt)
     file_handler.addFilter(context)
 
-    root.addHandler(console)
+    if sys.stderr is not None:  # în executabilul cu fereastră nu există consolă
+        root.addHandler(console)
     root.addHandler(file_handler)
     # pywinauto este foarte vorbăreț pe DEBUG
     logging.getLogger("pywinauto").setLevel(logging.WARNING)
@@ -69,6 +70,7 @@ class HangWatchdog(logging.Handler):
         self.limit_s = limit_s
         self.last = time.monotonic()
         self._thread: threading.Thread | None = None
+        self.fir_urmarit: int | None = None  # firul robotului; implicit firul principal (în interfață e altul)
 
     def emit(self, record: logging.LogRecord) -> None:
         if record.name != "tematica.watchdog":
@@ -81,13 +83,17 @@ class HangWatchdog(logging.Handler):
 
     def _run(self) -> None:
         log = logging.getLogger("tematica.watchdog")
-        main_id = threading.main_thread().ident
         while True:
             time.sleep(5)
             idle = time.monotonic() - self.last
             if idle < self.limit_s:
                 continue
-            frame = sys._current_frames().get(main_id)
+            from .control import control  # import leneș (evită importul circular)
+
+            if control.in_pauza:  # în pauză stă intenționat
+                self.last = time.monotonic()
+                continue
+            frame = sys._current_frames().get(self.fir_urmarit or threading.main_thread().ident)
             stack = "".join(traceback.format_stack(frame)) if frame else "(stiva indisponibilă)"
             log.warning("Nicio activitate de %.0fs - programul stă aici:\n%s", idle, stack)
             self.last = time.monotonic()  # următorul raport peste încă limit_s secunde

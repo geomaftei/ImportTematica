@@ -13,6 +13,7 @@ import logging
 import time
 
 from ..config import Config
+from ..control import control
 from ..exceptions import ApplicationException
 from .app import PentanaApp
 from .fastspec import arbore_controale
@@ -27,6 +28,7 @@ class SalvareCopieSiguranta:
         self.copie_confirmata = False
 
     def ruleaza(self) -> None:
+        control.punct_sigur("Salvarea șablonului și copia de siguranță")
         app = self.app
         designer = app.path(app.main, "pnl_Main", "AuditDesignSection", "_sectionArea", "WPTemplateDesigner2")
         # bara cu Salvare / Închidere e copil direct al c_Editor (mai adânc există alte tb_Main, ex. în RCMatrixEditor);

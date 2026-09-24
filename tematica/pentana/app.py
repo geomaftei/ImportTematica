@@ -29,6 +29,7 @@ from pywinauto.findwindows import ElementAmbiguousError, ElementNotFoundError
 from pywinauto.timings import TimeoutError as PwTimeoutError
 
 from ..config import Config
+from ..control import control
 from ..exceptions import ApplicationException
 from .fastspec import FastSpec, FereastraProces, copii_cu_nume, wrap
 from .images import Imagini, Names, Region
@@ -93,6 +94,7 @@ class PentanaApp:
         self.wait(self._menu_instrumente(), timeout=60)
         time.sleep(float(self.cfg.get("pentana.ready_delay_s", 2)))
         log.info("Pentana este pornită")
+        control.la_reluare = self.aduce_in_fata
         return self
 
     def _menu_instrumente(self):
@@ -123,7 +125,13 @@ class PentanaApp:
         self.app = Application(backend="uia").connect(path=self.exe, timeout=self.timeout)
         self.main.wait("exists visible", timeout=self.timeout)
         log.info("M-am atașat la instanța Pentana existentă")
+        control.la_reluare = self.aduce_in_fata
         return self
+
+    def aduce_in_fata(self) -> None:
+        """După o pauză: fereastra Pentana din nou activă (tastele robotului trebuie să ajungă la ea)."""
+        self.main.wrapper_object().set_focus()
+        time.sleep(0.5)
 
     def _login_visible(self) -> bool:
         """Formularul de autentificare este afișat efectiv (câmpul de utilizator există și e vizibil)."""
@@ -308,6 +316,7 @@ class PentanaApp:
         return "\n".join(lines)
 
     def pause(self, factor: float = 1.0) -> None:
+        control.verifica()  # oprirea cerută din interfață (F10) se aplică după acțiunea curentă
         time.sleep(self.delay * factor)
 
     def click(self, spec, double: bool = False, right: bool = False):

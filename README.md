@@ -57,6 +57,28 @@ python main.py
 | `python tools/genereaza_exemplu.py` | Scrie o matrice de exemplu în `Data/Input/`. |
 | `pytest` | Testele pentru partea de date (matrice, potrivirea numelor, datele) – fără Pentana. |
 
+## Aplicația cu fereastră (ImportTematica.exe)
+
+`python gui.py` (din sursă) sau `ImportTematica.exe` (fără Python instalat): alegerea matricei și a pașilor,
+**Verifică matricea**, **Start**, **Pauză / Continuă (F9)**, **Oprește (F10)**, logul în timp real, bara de progres
+(teste introduse / total) și rezumatul de la final.
+
+- La Start fereastra se minimizează, ca să nu acopere Pentana; F9 / F10 merg și cu fereastra minimizată.
+- **Pauza** se face la următorul punct sigur (înaintea unui nod, risc, control, test sau a salvării), ca să nu rămână
+  o listă sau un editor deschis pe jumătate; la *Continuă* robotul readuce Pentana în față și merge mai departe.
+- **Oprirea** se face după acțiunea curentă; Pentana rămâne deschis, fără pachet de diagnostic, iar rezumatul spune
+  la ce pas s-a oprit.
+
+Construirea executabilului (pe un calculator cu Python și dependențele instalate):
+
+```bash
+build_exe.bat
+```
+
+Rezultatul: `dist\ImportTematica\` (cu `config.yaml`, `Data\` și `LEAME_EXE.txt` lângă `.exe`, editabile fără
+reconstruire) și arhiva `dist\ImportTematica.zip` (~90 MB). La final scriptul rulează `ImportTematica.exe --selftest`
+(configurare, citire Excel, UI Automation, OCR), fără Pentana.
+
 ## Configurare (`config.yaml`)
 
 | Parametru | Implicit | Rol |
@@ -122,8 +144,11 @@ caută după nume (ordinea nu contează).
 
 ```
 main.py                     punctul de intrare (argumente, config, log)
+gui.py                      aplicația cu fereastră (Start / Pauză / Oprește), sursa lui ImportTematica.exe
+build_exe.bat               construirea executabilului (PyInstaller)
 config.yaml                 configurarea
 tematica/framework.py       orchestrarea pașilor, pachetul de diagnostic, rezumatul final
+tematica/control.py         pauza și oprirea (puncte sigure între pași)
 tematica/matrice.py         citirea matricei
 tematica/nume_date.py       auditori (despărțire, potrivirea numelor) și termene
 tematica/pentana/app.py     pornirea Pentana, ferestre, clicuri, liste

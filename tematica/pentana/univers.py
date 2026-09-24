@@ -27,6 +27,7 @@ import pyautogui
 from pywinauto import keyboard
 
 from ..config import Config
+from ..control import control
 from ..exceptions import ApplicationException
 from ..matrice import Matrice
 from .app import PentanaApp, describe
@@ -153,6 +154,7 @@ class IntroducereProceseInUnivers:
 
     def adauga_nod(self, nume: str, tip: str, meniu: str) -> None:
         """Adaugă un nod relativ la selecția curentă din arbore (meniu = sub-obiect / același nivel)."""
+        control.punct_sigur(f"Univers - {tip} '{nume}'")
         log.info("Adaugare %s: %s (%s)", tip, nume, meniu)
         self._deschide_meniul_add_item()
         # rezerva din tastatură e cea a robotului: TAB -> primul element (sub-obiect), TAB TAB -> al doilea

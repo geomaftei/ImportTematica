@@ -1,0 +1,20 @@
+IMPORT TEMATICA IN PENTANA - executabilul
+
+Pornire: dublu-clic pe ImportTematica.exe (nu e nevoie de Python instalat).
+
+1. "Alege..." - matricea Excel de importat (implicit MatriceDeIntrodus.xlsx din acest folder).
+2. Bifeaza pasii: Universul de procese / Sablon (riscuri, controale, teste) / Salvare + copie de siguranta.
+   "Pe Pentana deja deschis" = nu porneste Pentana, lucreaza pe fereastra deja deschisa.
+3. "Verifica matricea" - doar citeste Excel-ul si arata ce s-ar introduce (fara Pentana).
+4. "Start" - fereastra se minimizeaza ca sa nu acopere Pentana. Nu folosi mouse-ul cat ruleaza robotul.
+
+   F9  = pauza (robotul se opreste la urmatorul punct sigur, intre pasi) / continua
+   F10 = opreste (Pentana ramane deschis cu ce s-a introdus pana atunci)
+
+   Tastele merg si cu fereastra minimizata. In pauza fereastra reapare; la "Continua" robotul readuce Pentana
+   in fata si merge mai departe.
+
+La final: rezumatul rularii in fereastra si in logs\ (cate un fisier pentru fiecare rulare).
+La o eroare: Data\Exceptions_Screenshots\ExceptionReport_<data>.zip - trimite-l pentru diagnostic.
+
+Setari: config.yaml (butonul "Config"): numele sablonului, entitatea, tipul de audit, sari_peste_univers etc.

@@ -7,12 +7,20 @@ fișier .env sau Windows Credential Manager (keyring).
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import yaml
 from dotenv import load_dotenv
+
+
+def radacina() -> Path:
+    """Folderul proiectului; în executabil (PyInstaller), folderul în care stă ImportTematica.exe."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent.parent
 
 
 @dataclass
@@ -28,7 +36,7 @@ class Config:
 
     @classmethod
     def load(cls, path: Optional[str] = None) -> "Config":
-        root = Path(__file__).resolve().parent.parent
+        root = radacina()
         cfg_path = Path(path) if path else root / "config.yaml"
         with open(cfg_path, encoding="utf-8") as fh:
             data = yaml.safe_load(fh) or {}

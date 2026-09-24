@@ -33,6 +33,8 @@ from PIL import ImageGrab
 from pywinauto import keyboard
 
 from ..config import Config
+from ..control import control
+from ..control import control as ctrl
 from ..exceptions import ApplicationException
 from ..matrice import (
     COL_CADRU_CONTROL, COL_DENUMIRE_CONTROL, COL_DENUMIRE_TEST, COL_DESCRIERE_CONTROL, COL_DESCRIERE_RISC,
@@ -224,6 +226,7 @@ class IntroducereRiscuri:
         procesul printre nodurile de pe primul nivel, aria printre copiii procesului, sub-aria printre copiii ariei,
         apoi confirmăm cu Enter.
         """
+        control.punct_sigur("Alegerea nodului " + " > ".join(cale[1:]))
         app = self.app
         dd = None
         for incercare in range(1, 4):
@@ -249,6 +252,7 @@ class IntroducereRiscuri:
     # --- risc ------------------------------------------------------------
     def adauga_risc(self, risc: pd.Series) -> None:
         app = self.app
+        control.punct_sigur(f"Risc '{normalizeaza_spatii(risc[COL_DESCRIERE_RISC])[:60]}'")
         descriere = normalizeaza_spatii(risc[COL_DESCRIERE_RISC])
         log.info("Adauga risc: %s", descriere)
         app.click(app.path(self.rc_matrix, "tb_Main", "btn_AddRisk"))
@@ -274,6 +278,7 @@ class IntroducereRiscuri:
     # --- control ---------------------------------------------------------
     def adauga_control(self, control: pd.Series) -> None:
         app = self.app
+        ctrl.punct_sigur(f"Control '{normalizeaza_spatii(control[COL_DENUMIRE_CONTROL])[:60]}'")
         denumire = normalizeaza_spatii(control[COL_DENUMIRE_CONTROL])
         log.info("Adaugare control %s", denumire)
 
@@ -448,6 +453,7 @@ class IntroducereRiscuri:
 
     def adauga_test(self, test: pd.Series) -> None:
         app = self.app
+        control.punct_sigur(f"Test '{normalizeaza_spatii(test[COL_DENUMIRE_TEST])[:60]}'")
         denumire = normalizeaza_spatii(test[COL_DENUMIRE_TEST])
         log.info("Adaugare test nou %s", denumire)
         tests_panel = app.path(self.rc_matrix, "pnl_Outer", "pnl_TestEditor", "c_TestsPanel", "mp_DetailPages",

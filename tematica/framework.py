@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 from .config import Config
+from .control import OprireCeruta, control
 from .exceptions import BusinessRuleException
 from .logging_setup import context as log_context
 from .matrice import Matrice, citeste_matrice
@@ -71,27 +72,27 @@ class Framework:
     def _afiseaza(m: Matrice) -> None:
         """--dry-run: arată ce s-ar introduce în Pentana, fără să deschidă aplicația."""
         for proces in m.procese:
-            print(f"PROCES  {proces}")
+            log.info(f"PROCES  {proces}")
             for arie in m.arii_pentru(proces):
-                print(f"  ARIE  {arie}")
+                log.info(f"  ARIE  {arie}")
                 Framework._afiseaza_riscuri(m, proces, arie, "", "    ")
                 for subarie in m.subarii_pentru(proces, arie):
-                    print(f"    SUB-ARIE  {subarie}")
+                    log.info(f"    SUB-ARIE  {subarie}")
                     Framework._afiseaza_riscuri(m, proces, arie, subarie, "      ")
 
     @staticmethod
     def _afiseaza_riscuri(m: Matrice, proces: str, arie: str, subarie: str, indent: str) -> None:
         for _, risc in m.riscuri_pentru(proces, arie, subarie).iterrows():
-            print(f"{indent}RISC [{risc['Tip Risc']}] {risc['Descriere Risc']}")
+            log.info(f"{indent}RISC [{risc['Tip Risc']}] {risc['Descriere Risc']}")
             for _, control in m.controale_pentru(risc).iterrows():
-                print(f"{indent}  CONTROL [{control['Frecventa Control']}] {control['Denumire Control']}")
+                log.info(f"{indent}  CONTROL [{control['Frecventa Control']}] {control['Denumire Control']}")
                 for _, test in m.teste_pentru(control).iterrows():
                     cod = test.get("Cod referinta APR (Nr. Crt.)", "")
-                    print(f"{indent}    TEST {test['Denumire Test']}  ({test['Tehnici de Testare']})"
+                    log.info(f"{indent}    TEST {test['Denumire Test']}  ({test['Tehnici de Testare']})"
                           + (f"  [CodApr {cod}]" if cod else ""))
                     auditori, termen = test.get("Auditor alocat", ""), test.get("Termen finalizare test", "")
                     if auditori or termen:
-                        print(f"{indent}      auditori: {'; '.join(imparte_auditori(auditori)) or '-'}"
+                        log.info(f"{indent}      auditori: {'; '.join(imparte_auditori(auditori)) or '-'}"
                               f"   termen: {_data_text(termen)}")
 
     # ------------------------------------------------------------ Main loop
@@ -122,6 +123,12 @@ class Framework:
                 log.error("Business rule exception: %s", exc)
                 eroare = str(exc)
                 break
+            except OprireCeruta:
+                # fără pachet de diagnostic și fără a închide Pentana: utilizatorul vede unde s-a ajuns
+                log.warning("Rularea a fost oprită de utilizator")
+                self.oprit = True
+                rezultat = 2
+                break
             except Exception as exc:  # noqa: BLE001 - System Exception
                 log.exception("System exception: %s", exc)
                 eroare = f"{type(exc).__name__}: {exc}"
@@ -134,7 +141,8 @@ class Framework:
                     continue
                 break
         log_context.transaction_number = 0
-        self._inchide_aplicatiile()
+        if not getattr(self, "oprit", False):
+            self._inchide_aplicatiile()
         self._rezumat_final(rezultat, eroare, datetime.now() - inceput)
         return rezultat
 
@@ -143,7 +151,9 @@ class Framework:
         probleme_aud = list(getattr(self.riscuri, "probleme_auditori", []))
         probleme_termen = list(getattr(self.riscuri, "probleme_termen", []))
         de_verificat = list(getattr(self.riscuri, "de_verificat", []))
-        if rezultat != 0:
+        if getattr(self, "oprit", False):
+            stare = f"OPRIT DE UTILIZATOR (la: {control.pas_curent or '-'}) - Pentana a rămas deschis"
+        elif rezultat != 0:
             stare = "EȘUAT"
         elif probleme_aud or probleme_termen or de_verificat:
             stare = "FINALIZAT CU PROBLEME DE VERIFICAT"
